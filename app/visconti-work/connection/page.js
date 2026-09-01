@@ -1,5 +1,6 @@
 import ViscontiConnectionV2 from "@/components/ViscontiConnectionV2";
 import ViscontiConnectionControlTower from "@/components/ViscontiConnectionControlTower";
+import ViscontiConnectionMilestoneEditor from "@/components/ViscontiConnectionMilestoneEditor";
 import { getViscontiConnectionData } from "@/lib/visconti-work-data";
 
 export const metadata = {
@@ -14,6 +15,7 @@ export default async function ConnectionPage({ searchParams }) {
   return (
     <>
       <ViscontiConnectionControlTower data={data.controlTower} />
+      <ViscontiConnectionMilestoneEditor practice={data.practice} />
       <ViscontiConnectionV2
         practice={data.practice}
         deadlines={data.deadlines}
