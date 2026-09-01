@@ -5,7 +5,7 @@ const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const allowed = {
   practice: ["request_date", "pto_received_date", "pto_accepted_date", "iter_start_date", "sharing_date", "acceptance_date", "next_deadline", "next_deadline_type", "notes", "responsible_id"],
-  step: ["status", "responsible_id", "due_date", "started_date", "completed_at", "blocker_reason", "notes"],
+  step: ["title", "phase", "step_type", "is_optional", "is_not_applicable", "status", "responsible_id", "due_date", "started_date", "completed_at", "completed_date", "blocker_reason", "notes", "document", "sort_order"],
   deadline: ["status", "responsible_id", "due_date", "completed_date", "notes"],
 };
 
@@ -34,6 +34,12 @@ export async function PATCH(request) {
     if (!allowed[type] || !id) return NextResponse.json({ error: "type/id mancanti" }, { status: 400 });
     if (type === "step" && body.status && !enums.stepStatus.has(body.status)) return NextResponse.json({ error: "Stato passaggio non valido" }, { status: 400 });
     if (type === "deadline" && body.status && !enums.deadlineStatus.has(body.status)) return NextResponse.json({ error: "Stato scadenza non valido" }, { status: 400 });
+    if (type === "step") {
+      if (body.title != null && !String(body.title).trim()) return NextResponse.json({ error: "Il nome del passaggio è obbligatorio" }, { status: 400 });
+      if (body.is_optional != null && typeof body.is_optional !== "boolean") return NextResponse.json({ error: "is_optional non valido" }, { status: 400 });
+      if (body.is_not_applicable != null && typeof body.is_not_applicable !== "boolean") return NextResponse.json({ error: "is_not_applicable non valido" }, { status: 400 });
+      if (body.sort_order != null && !Number.isInteger(body.sort_order)) return NextResponse.json({ error: "sort_order non valido" }, { status: 400 });
+    }
     for (const key of ["request_date", "pto_received_date", "pto_accepted_date", "iter_start_date", "sharing_date", "acceptance_date", "next_deadline", "due_date", "started_date", "completed_date"]) {
       if (Object.prototype.hasOwnProperty.call(body, key) && !validDate(body[key] === "" ? null : body[key])) return NextResponse.json({ error: `Data non valida: ${key}` }, { status: 400 });
     }
