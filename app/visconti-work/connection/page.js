@@ -1,4 +1,5 @@
 import ViscontiConnectionV2 from "@/components/ViscontiConnectionV2";
+import ViscontiConnectionControlTower from "@/components/ViscontiConnectionControlTower";
 import { getViscontiConnectionData } from "@/lib/visconti-work-data";
 
 export const metadata = {
@@ -11,11 +12,14 @@ export default async function ConnectionPage({ searchParams }) {
   const data = await getViscontiConnectionData(params?.practice || null, params?.project || null);
 
   return (
-    <ViscontiConnectionV2
-      practice={data.practice}
-      deadlines={data.deadlines}
-      stepsData={data.steps}
-      controlTower={data.controlTower}
-    />
+    <>
+      <ViscontiConnectionControlTower data={data.controlTower} />
+      <ViscontiConnectionV2
+        practice={data.practice}
+        deadlines={data.deadlines}
+        stepsData={data.steps}
+        controlTower={data.controlTower}
+      />
+    </>
   );
 }
