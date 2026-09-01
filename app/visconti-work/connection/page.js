@@ -15,6 +15,7 @@ export default async function ConnectionPage({ searchParams }) {
       practice={data.practice}
       deadlines={data.deadlines}
       stepsData={data.steps}
+      controlTower={data.controlTower}
     />
   );
 }
