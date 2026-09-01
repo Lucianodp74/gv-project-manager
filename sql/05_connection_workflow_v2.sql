@@ -43,15 +43,15 @@ CREATE TABLE IF NOT EXISTS connection_deadlines (
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  CONSTRAINT connection_deadline_status_chk
-    CHECK (status IN ('open','completed','overdue','cancelled'))
+  CONSTRAINT connection_deadline_status_chk CHECK (status IN ('open','completed','overdue','cancelled'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_conn_deadlines_practice ON connection_deadlines(practice_id);
 CREATE INDEX IF NOT EXISTS idx_conn_deadlines_due_date ON connection_deadlines(due_date);
 CREATE INDEX IF NOT EXISTS idx_conn_deadlines_status ON connection_deadlines(status);
 
--- Lightweight operational view for dashboards.
+-- Lightweight operational view for dashboards. DISTINCT avoids multiplying
+-- deadlines by steps when both are present for the same practice.
 CREATE OR REPLACE VIEW connection_workflow_overview AS
 SELECT
   cp.id,
@@ -70,9 +70,9 @@ SELECT
   cp.acceptance_date,
   cp.next_deadline,
   cp.next_deadline_type,
-  COUNT(cd.id) FILTER (WHERE cd.status IN ('open','overdue')) AS open_deadlines,
-  COUNT(cs.id) FILTER (WHERE cs.status <> 'done') AS open_steps,
-  COUNT(cs.id) FILTER (WHERE cs.status = 'done') AS completed_steps
+  COUNT(DISTINCT cd.id) FILTER (WHERE cd.status IN ('open','overdue')) AS open_deadlines,
+  COUNT(DISTINCT cs.id) FILTER (WHERE cs.status <> 'done') AS open_steps,
+  COUNT(DISTINCT cs.id) FILTER (WHERE cs.status = 'done') AS completed_steps
 FROM connection_practices cp
 LEFT JOIN connection_deadlines cd ON cd.practice_id = cp.id
 LEFT JOIN connection_steps cs ON cs.practice_id = cp.id
