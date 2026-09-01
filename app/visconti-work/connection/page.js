@@ -8,7 +8,7 @@ export const metadata = {
 
 export default async function ConnectionPage({ searchParams }) {
   const params = await searchParams;
-  const data = await getViscontiConnectionData(params?.practice || null);
+  const data = await getViscontiConnectionData(params?.practice || null, params?.project || null);
 
   return (
     <ViscontiConnectionV2
