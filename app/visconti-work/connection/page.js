@@ -5,10 +5,7 @@ import ViscontiConnectionWorkflowBuilder from "@/components/ViscontiConnectionWo
 import ViscontiConnectionListV2 from "@/components/ViscontiConnectionListV2";
 import { getViscontiConnectionData, getViscontiConnectionsData } from "@/lib/visconti-work-data";
 
-export const metadata = {
-  title: "Connessioni · Visconti Work V2",
-  description: "Gestione operativa delle pratiche di connessione — Gruppo Visconti",
-};
+export const metadata = { title: "Connessioni · Visconti Work V2", description: "Gestione operativa delle pratiche di connessione — Gruppo Visconti" };
 
 export default async function ConnectionPage({ searchParams }) {
   const params = await searchParams;
@@ -20,7 +17,7 @@ export default async function ConnectionPage({ searchParams }) {
   return <>
     <ViscontiConnectionControlTower data={data.controlTower} />
     <ViscontiConnectionMilestoneEditor practice={data.practice} />
-    <ViscontiConnectionWorkflowBuilder practice={data.practice} steps={data.steps} />
+    <ViscontiConnectionWorkflowBuilder practice={data.practice} steps={data.steps} members={data.members} />
     <ViscontiConnectionDetailV2 practice={data.practice} deadlines={data.deadlines} steps={data.steps} />
   </>;
 }
