@@ -18,6 +18,6 @@ export default async function ConnectionPage({ searchParams }) {
     <ViscontiConnectionControlTower data={data.controlTower} />
     <ViscontiConnectionMilestoneEditor practice={data.practice} />
     <ViscontiConnectionWorkflowBuilder practice={data.practice} steps={data.steps} members={data.members} />
-    <ViscontiConnectionDetailV2 practice={data.practice} deadlines={data.deadlines} steps={data.steps} />
+    <ViscontiConnectionDetailV2 practice={data.practice} deadlines={data.deadlines} steps={data.steps} history={data.history} />
   </>;
 }
