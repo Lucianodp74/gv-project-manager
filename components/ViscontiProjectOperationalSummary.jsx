@@ -52,12 +52,12 @@ export default function ViscontiProjectOperationalSummary({ projectId }) {
       </div>
       <div className="pos-grid">
         <div className="pos-box"><small>Attività aperte</small><b>{row.open_tasks || 0}</b></div>
-        <div className="pos-box"><small>Bloccate</small><b>{row.blocked_tasks || 0}</b></div>
-        <div className="pos-box"><small>Specialisti</small><b>{row.open_specialists || 0}</b></div>
-        <div className="pos-box"><small>Autorità</small><b>{row.open_authority_items || 0}</b></div>
-        <div className="pos-box"><small>Conferme Terna</small><b>{row.waiting_terna_confirmations || 0}</b></div>
+        <div className="pos-box"><small>Bloccate</small><b>{row.blockers || 0}</b></div>
+        <div className="pos-box"><small>Attività scadute</small><b>{row.overdue_tasks || 0}</b></div>
+        <div className="pos-box"><small>Prossima scadenza</small><b>{fmt(row.next_connection_deadline)}</b></div>
+        <div className="pos-box"><small>Conferme Terna in attesa</small><b>{row.waiting_terna_confirmations || 0}</b></div>
       </div>
-      <div className="pos-next"><b>Prossimo punto di controllo:</b> {row.next_action || "nessuna prossima azione registrata"}{row.nearest_terna_confirmation_due ? ` · conferma Terna entro ${fmt(row.nearest_terna_confirmation_due)}` : ""}</div>
+      <div className="pos-next"><b>Prossimo punto di controllo:</b> {row.next_connection_deadline ? `scadenza connessione il ${fmt(row.next_connection_deadline)}` : "nessuna scadenza di connessione registrata"}</div>
     </section>
   );
 }
