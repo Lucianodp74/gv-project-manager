@@ -1,26 +1,14 @@
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const TABLE = "tasks";
+const TABLE = "visconti_task_board";
 
-function configError() {
-  return new Response(JSON.stringify({ error: "Supabase non configurato" }), { status: 500, headers: { "Content-Type": "application/json" } });
-}
-
+function configError() { return new Response(JSON.stringify({ error: "Supabase non configurato" }), { status: 500, headers: { "Content-Type": "application/json" } }); }
 async function supabase(path, options = {}) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-      ...(options.headers || {}),
-    },
-  });
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...options, headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation", ...(options.headers || {}) } });
 }
 
-const allowed = new Set(["title", "description", "project_id", "assignee_person_id", "priority", "workflow_status", "blocker_reason", "notes", "start_date", "due_date", "completed_at", "category", "connection_practice_id", "authority_request_id", "next_action"]);
+const allowed = new Set(["title", "description", "project_id", "assignee_person_id", "priority", "workflow_status", "blocker_reason", "notes", "due_date", "completed_at", "category", "connection_practice_id", "next_action"]);
 const priorities = new Set(["low", "normal", "high", "urgent"]);
 const statuses = new Set(["todo", "in_progress", "blocked", "done", "cancelled"]);
 const categories = new Set(["general", "connection", "design", "gis", "land", "specialist", "authority", "document", "commercial", "internal"]);
@@ -33,6 +21,7 @@ function clean(body, partial = false) {
   if (out.priority !== undefined && !priorities.has(out.priority)) throw new Error("Priorità non valida");
   if (out.workflow_status !== undefined && !statuses.has(out.workflow_status)) throw new Error("Stato non valido");
   if (out.category !== undefined && !categories.has(out.category)) throw new Error("Categoria non valida");
+  if (out.assignee_person_id !== undefined) { out.responsible_id = out.assignee_person_id; delete out.assignee_person_id; }
   return out;
 }
 
