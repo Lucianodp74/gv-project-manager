@@ -1,4 +1,4 @@
-import ViscontiWorkLiveDashboard from "@/components/ViscontiWorkLiveDashboard";
+import ViscontiDirectorControlTower from "@/components/ViscontiDirectorControlTower";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 
 export const metadata = {
@@ -8,5 +8,5 @@ export const metadata = {
 
 export default async function ViscontiWorkPage() {
   const data = await getViscontiWorkData();
-  return <ViscontiWorkLiveDashboard data={data} />;
+  return <ViscontiDirectorControlTower data={data} />;
 }
