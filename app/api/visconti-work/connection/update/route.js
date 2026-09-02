@@ -4,8 +4,8 @@ const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const allowed = {
-  practice: ["request_date", "pto_received_date", "pto_accepted_date", "iter_start_date", "sharing_date", "acceptance_date", "next_deadline", "next_deadline_type", "notes", "responsible_id"],
-  step: ["title", "phase", "step_type", "is_optional", "is_not_applicable", "status", "responsible_id", "due_date", "started_date", "completed_at", "notes", "sort_order", "confirmation_required", "confirmation_status", "confirmation_date", "confirmation_document", "confirmation_notes"],
+  practice: ["request_date", "pto_received_date", "pto_accepted_date", "pto_validated_date", "iter_start_date", "start_works_validated_date", "sharing_date", "acceptance_date", "next_deadline", "next_deadline_type", "authorization_status", "authorization_outcome", "notes", "responsible_id"],
+  step: ["title", "phase", "step_type", "is_optional", "is_not_applicable", "status", "responsible_id", "due_date", "started_date", "completed_at", "notes", "sort_order", "confirmation_required", "confirmation_status", "confirmation_date", "confirmation_document", "confirmation_notes", "blocker_reason", "task_required", "task_id"],
   deadline: ["status", "responsible_id", "due_date", "notes"],
 };
 
@@ -13,12 +13,14 @@ const enums = {
   stepStatus: new Set(["pending", "in_progress", "done"]),
   confirmationStatus: new Set(["not_required", "waiting", "confirmed", "validated", "rejected"]),
   deadlineStatus: new Set(["open", "completed", "overdue", "cancelled"]),
+  authorizationStatus: new Set(["not_started", "in_progress", "completed", "suspended", "cancelled"]),
 };
 
 const practiceAliases = {
-  pto_accepted_date: "accepted_at",
-  acceptance_date: "accepted_at",
+  pto_accepted_date: "pto_accepted_at",
+  pto_validated_date: "pto_validated_at",
   iter_start_date: "authorization_start_at",
+  start_works_validated_date: "start_works_validated_at",
 };
 
 function clean(body, type) {
@@ -43,14 +45,16 @@ export async function PATCH(request) {
     if (type === "step" && body.status && !enums.stepStatus.has(body.status)) return NextResponse.json({ error: "Stato passaggio non valido" }, { status: 400 });
     if (type === "step" && body.confirmation_status && !enums.confirmationStatus.has(body.confirmation_status)) return NextResponse.json({ error: "Stato conferma non valido" }, { status: 400 });
     if (type === "deadline" && body.status && !enums.deadlineStatus.has(body.status)) return NextResponse.json({ error: "Stato scadenza non valido" }, { status: 400 });
+    if (type === "practice" && body.authorization_status && !enums.authorizationStatus.has(body.authorization_status)) return NextResponse.json({ error: "Stato iter autorizzativo non valido" }, { status: 400 });
     if (type === "step") {
       if (body.title != null && !String(body.title).trim()) return NextResponse.json({ error: "Il nome del passaggio è obbligatorio" }, { status: 400 });
       if (body.is_optional != null && typeof body.is_optional !== "boolean") return NextResponse.json({ error: "is_optional non valido" }, { status: 400 });
       if (body.is_not_applicable != null && typeof body.is_not_applicable !== "boolean") return NextResponse.json({ error: "is_not_applicable non valido" }, { status: 400 });
       if (body.confirmation_required != null && typeof body.confirmation_required !== "boolean") return NextResponse.json({ error: "confirmation_required non valido" }, { status: 400 });
+      if (body.task_required != null && typeof body.task_required !== "boolean") return NextResponse.json({ error: "task_required non valido" }, { status: 400 });
       if (body.sort_order != null && !Number.isInteger(body.sort_order)) return NextResponse.json({ error: "sort_order non valido" }, { status: 400 });
     }
-    for (const key of ["request_date", "pto_received_date", "pto_accepted_date", "iter_start_date", "sharing_date", "acceptance_date", "next_deadline", "due_date", "started_date", "confirmation_date"]) {
+    for (const key of ["request_date", "pto_received_date", "pto_accepted_date", "pto_validated_date", "iter_start_date", "start_works_validated_date", "sharing_date", "acceptance_date", "next_deadline", "due_date", "started_date", "confirmation_date"]) {
       if (Object.prototype.hasOwnProperty.call(body, key) && !validDate(body[key] === "" ? null : body[key])) return NextResponse.json({ error: `Data non valida: ${key}` }, { status: 400 });
     }
     const table = type === "practice" ? "connection_practices" : type === "step" ? "connection_workflow_builder" : "connection_deadlines";
