@@ -79,10 +79,12 @@ export async function DELETE(request) {
   try {
     const id = String(new URL(request.url).searchParams.get('id') || '').trim();
     if (!id) return NextResponse.json({ error: 'id obbligatorio' }, { status: 400 });
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: headers({ Prefer: 'return=representation' }) });
+    // Workflow steps are operational records: do not physically delete them.
+    // Mark them as not applicable so the workflow remains traceable and reversible.
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: headers({ Prefer: 'return=representation' }), body: JSON.stringify({ is_not_applicable: true, task_required: false }) });
     const data = await response.json().catch(() => []);
-    if (!response.ok) return NextResponse.json({ error: data?.message || 'Eliminazione fase fallita' }, { status: response.status });
+    if (!response.ok) return NextResponse.json({ error: data?.message || 'Disattivazione fase fallita' }, { status: response.status });
     if (!data.length) return NextResponse.json({ error: 'Fase non trovata' }, { status: 404 });
-    return NextResponse.json({ ok: true, deleted: data[0] });
-  } catch (error) { return NextResponse.json({ error: error.message || 'Eliminazione fase fallita' }, { status: 500 }); }
+    return NextResponse.json({ ok: true, disabled: data[0] });
+  } catch (error) { return NextResponse.json({ error: error.message || 'Disattivazione fase fallita' }, { status: 500 }); }
 }
