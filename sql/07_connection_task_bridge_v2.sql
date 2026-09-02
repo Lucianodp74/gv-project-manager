@@ -48,21 +48,9 @@ BEGIN
   END;
 
   INSERT INTO tasks (
-    project_id,
-    title,
-    assignee,
-    status,
-    deadline,
-    entity,
-    assignee_person_id,
-    priority,
-    workflow_status,
-    due_date,
-    category,
-    connection_practice_id,
-    source_connection_deadline_id,
-    next_action,
-    notes
+    project_id,title,assignee,status,deadline,entity,assignee_person_id,priority,
+    workflow_status,due_date,category,connection_practice_id,source_connection_deadline_id,
+    next_action,notes
   ) VALUES (
     v_project_id,
     'Connessione — ' || NEW.title,
@@ -82,19 +70,11 @@ BEGIN
   )
   ON CONFLICT (source_connection_deadline_id)
   DO UPDATE SET
-    project_id = EXCLUDED.project_id,
-    title = EXCLUDED.title,
-    assignee = EXCLUDED.assignee,
-    status = EXCLUDED.status,
-    deadline = EXCLUDED.deadline,
-    assignee_person_id = EXCLUDED.assignee_person_id,
-    priority = EXCLUDED.priority,
-    workflow_status = EXCLUDED.workflow_status,
-    due_date = EXCLUDED.due_date,
-    category = EXCLUDED.category,
-    connection_practice_id = EXCLUDED.connection_practice_id,
-    next_action = EXCLUDED.next_action,
-    notes = EXCLUDED.notes;
+    project_id=EXCLUDED.project_id,title=EXCLUDED.title,assignee=EXCLUDED.assignee,
+    status=EXCLUDED.status,deadline=EXCLUDED.deadline,assignee_person_id=EXCLUDED.assignee_person_id,
+    priority=EXCLUDED.priority,workflow_status=EXCLUDED.workflow_status,due_date=EXCLUDED.due_date,
+    category=EXCLUDED.category,connection_practice_id=EXCLUDED.connection_practice_id,
+    next_action=EXCLUDED.next_action,notes=EXCLUDED.notes;
 
   RETURN NEW;
 END;
@@ -107,25 +87,44 @@ ON connection_deadlines
 FOR EACH ROW
 EXECUTE FUNCTION sync_connection_deadline_task();
 
--- Keep the operational board explicit about the connection source.
+-- Backfill: make deadlines already present visible in the task engine too.
+INSERT INTO tasks (
+  project_id,title,assignee,status,deadline,entity,assignee_person_id,priority,workflow_status,
+  due_date,category,connection_practice_id,source_connection_deadline_id,next_action,notes
+)
+SELECT
+  cp.project_id,
+  'Connessione — ' || cd.title,
+  COALESCE(tm.display_name,''),
+  CASE WHEN cd.status='completed' THEN 'done'::task_status ELSE 'pending'::task_status END,
+  cd.due_date,
+  'Connessione',
+  COALESCE(cd.responsible_id,cp.responsible_id),
+  CASE WHEN cd.due_date <= CURRENT_DATE + 3 THEN 'urgent' WHEN cd.due_date <= CURRENT_DATE + 7 THEN 'high' ELSE 'normal' END,
+  CASE WHEN cd.status='completed' THEN 'done' WHEN cd.status='cancelled' THEN 'cancelled' ELSE 'todo' END,
+  cd.due_date,
+  'connection',
+  cd.practice_id,
+  cd.id,
+  'Verificare e chiudere la scadenza della connessione',
+  cd.notes
+FROM connection_deadlines cd
+JOIN connection_practices cp ON cp.id=cd.practice_id
+LEFT JOIN team_members tm ON tm.id=COALESCE(cd.responsible_id,cp.responsible_id)
+WHERE cp.project_id IS NOT NULL
+ON CONFLICT (source_connection_deadline_id)
+DO UPDATE SET
+  project_id=EXCLUDED.project_id,title=EXCLUDED.title,assignee=EXCLUDED.assignee,
+  status=EXCLUDED.status,deadline=EXCLUDED.deadline,assignee_person_id=EXCLUDED.assignee_person_id,
+  priority=EXCLUDED.priority,workflow_status=EXCLUDED.workflow_status,due_date=EXCLUDED.due_date,
+  category=EXCLUDED.category,connection_practice_id=EXCLUDED.connection_practice_id,
+  next_action=EXCLUDED.next_action,notes=EXCLUDED.notes;
+
 CREATE OR REPLACE VIEW visconti_task_board AS
 SELECT
-  t.id,
-  t.project_id,
-  t.title,
-  t.category,
-  t.priority,
-  t.workflow_status,
-  t.due_date,
-  t.start_date,
-  t.blocker_reason,
-  t.next_action,
-  t.assignee_person_id,
-  tm.display_name AS assignee_name,
-  p.name AS project_name,
-  p.project_stage,
-  p.risk_level,
-  t.connection_practice_id,
+  t.id,t.project_id,t.title,t.category,t.priority,t.workflow_status,t.due_date,t.start_date,
+  t.blocker_reason,t.next_action,t.assignee_person_id,tm.display_name AS assignee_name,
+  p.name AS project_name,p.project_stage,p.risk_level,t.connection_practice_id,
   t.source_connection_deadline_id,
   CASE
     WHEN t.workflow_status IN ('done','cancelled') THEN 'closed'
@@ -135,8 +134,8 @@ SELECT
     ELSE 'normal'
   END AS attention_state
 FROM tasks t
-JOIN projects p ON p.id = t.project_id
-LEFT JOIN team_members tm ON tm.id = t.assignee_person_id;
+JOIN projects p ON p.id=t.project_id
+LEFT JOIN team_members tm ON tm.id=t.assignee_person_id;
 
 COMMENT ON COLUMN tasks.source_connection_deadline_id IS 'Links an operational task to its originating connection deadline; prevents duplicate task creation.';
 COMMENT ON VIEW visconti_task_board IS 'Operational task board for Visconti Work: owner, status, deadline, attention and source connection deadline.';
