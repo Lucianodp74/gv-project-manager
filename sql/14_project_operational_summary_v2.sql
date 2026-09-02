@@ -24,7 +24,7 @@ SELECT
      FROM tasks t
     WHERE t.project_id = p.id
       AND t.workflow_status IN ('todo','in_progress','waiting','blocked')
-      AND (t.due_date < CURRENT_DATE OR t.attention_state IN ('overdue','urgent'))) AS urgent_tasks,
+      AND t.due_date < CURRENT_DATE) AS urgent_tasks,
   (SELECT COUNT(*)
      FROM specialist_assignments s
     WHERE s.project_id = p.id
@@ -75,7 +75,7 @@ SELECT
       SELECT 1 FROM tasks t
        WHERE t.project_id = p.id
          AND t.workflow_status IN ('todo','in_progress','waiting','blocked')
-         AND (t.due_date < CURRENT_DATE OR t.attention_state IN ('overdue','urgent'))
+         AND t.due_date < CURRENT_DATE
     ) THEN 'urgent'
     WHEN EXISTS (
       SELECT 1 FROM connection_steps cs
