@@ -23,6 +23,10 @@ const practiceAliases = {
   start_works_validated_date: "start_works_validated_at",
 };
 
+function headers(extra = {}) {
+  return { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", ...extra };
+}
+
 function clean(body, type) {
   const out = {};
   for (const key of allowed[type] || []) {
@@ -35,6 +39,48 @@ function clean(body, type) {
 }
 
 function validDate(value) { return value == null || /^\d{4}-\d{2}-\d{2}$/.test(value); }
+
+async function syncLinkedTask(stepId) {
+  const stepRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=id,practice_id,title,notes,status,responsible_id,due_date,confirmation_required,confirmation_status,confirmation_notes,blocker_reason,task_required,is_not_applicable& id=eq.${encodeURIComponent(stepId)}&limit=1`.replace("& id=", "&id="), { headers: headers(), cache: "no-store" });
+  if (!stepRes.ok) throw new Error("Impossibile leggere il passaggio aggiornato");
+  const steps = await stepRes.json();
+  if (!steps.length) return;
+  const step = steps[0];
+  const practiceRes = await fetch(`${URL}/rest/v1/connection_practices?select=project_id&id=eq.${encodeURIComponent(step.practice_id)}&limit=1`, { headers: headers(), cache: "no-store" });
+  if (!practiceRes.ok) throw new Error("Impossibile leggere la pratica collegata");
+  const practices = await practiceRes.json();
+  if (!practices.length) return;
+
+  const existingRes = await fetch(`${URL}/rest/v1/visconti_task_board?select=id&source_connection_step_id=eq.${encodeURIComponent(step.id)}&limit=1`, { headers: headers(), cache: "no-store" });
+  if (!existingRes.ok) throw new Error("Impossibile verificare l’attività collegata");
+  const existing = await existingRes.json();
+  const shouldHaveTask = Boolean(step.task_required || step.responsible_id || step.due_date || step.confirmation_required || existing.length);
+  if (!shouldHaveTask) return;
+
+  const workflowStatus = step.status === "done" || step.is_not_applicable ? "done" : step.confirmation_status === "waiting" ? "blocked" : step.status === "in_progress" ? "in_progress" : "todo";
+  const payload = {
+    title: step.title,
+    description: step.notes || null,
+    project_id: practices[0].project_id,
+    connection_practice_id: step.practice_id,
+    source_connection_step_id: step.id,
+    responsible_id: step.responsible_id || null,
+    due_date: step.due_date || null,
+    workflow_status: workflowStatus,
+    priority: step.confirmation_status === "waiting" ? "high" : "normal",
+    category: "connection",
+    blocker_reason: step.confirmation_status === "waiting" ? "In attesa di conferma esterna" : step.blocker_reason || null,
+    next_action: step.confirmation_status === "waiting" ? "Ottenere la conferma e registrare l’esito" : workflowStatus === "done" ? null : "Completare il passaggio",
+    notes: step.confirmation_notes || null,
+  };
+  const taskUrl = existing.length ? `${URL}/rest/v1/visconti_task_board?id=eq.${encodeURIComponent(existing[0].id)}` : `${URL}/rest/v1/visconti_task_board`;
+  const taskRes = await fetch(taskUrl, { method: existing.length ? "PATCH" : "POST", headers: headers({ Prefer: "return=representation" }), body: JSON.stringify(payload), cache: "no-store" });
+  if (!taskRes.ok) throw new Error("Impossibile sincronizzare l’attività collegata");
+  const taskRows = await taskRes.json().catch(() => []);
+  const taskId = existing[0]?.id || taskRows[0]?.id || taskRows?.id;
+  if (!taskId) return;
+  await fetch(`${URL}/rest/v1/connection_workflow_builder?id=eq.${encodeURIComponent(step.id)}`, { method: "PATCH", headers: headers({ Prefer: "return=minimal" }), body: JSON.stringify({ task_id: taskId }), cache: "no-store" });
+}
 
 export async function PATCH(request) {
   if (!URL || !KEY) return NextResponse.json({ error: "Supabase non configurato" }, { status: 503 });
@@ -64,12 +110,13 @@ export async function PATCH(request) {
     if (type === "step" && payload.confirmation_status && payload.confirmation_status !== "waiting" && payload.confirmation_status !== "not_required" && !payload.confirmation_date) payload.confirmation_date = new Date().toISOString().slice(0, 10);
     if (type === "step" && payload.confirmation_status === "waiting") payload.confirmation_required = true;
     if (type === "deadline" && payload.status === "completed" && !payload.due_date) payload.due_date = new Date().toISOString().slice(0, 10);
-    const response = await fetch(`${URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify(payload), cache: "no-store" });
+    const response = await fetch(`${URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: headers({ Prefer: "return=representation" }), body: JSON.stringify(payload), cache: "no-store" });
     const text = await response.text();
     if (!response.ok) return NextResponse.json({ error: `Aggiornamento fallito (${response.status})`, detail: text.slice(0, 300) }, { status: response.status });
+    if (type === "step") await syncLinkedTask(id);
     return NextResponse.json({ ok: true, data: text ? JSON.parse(text) : [] });
   } catch (error) {
     console.error("Connection update failed", error);
-    return NextResponse.json({ error: "Richiesta non valida" }, { status: 400 });
+    return NextResponse.json({ error: error.message || "Richiesta non valida" }, { status: 400 });
   }
 }
