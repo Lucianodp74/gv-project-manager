@@ -16,6 +16,25 @@ async function shiftSteps(practiceId, startOrder) {
   }
 }
 
+async function createLinkedTask(step) {
+  const mustCreate = Boolean(step.task_required || step.responsible_id || step.due_date || step.confirmation_required);
+  if (!mustCreate || step.status === 'done' || step.is_not_applicable) return null;
+  const existingRes = await fetch(`${SUPABASE_URL}/rest/v1/visconti_task_board?select=id&source_connection_step_id=eq.${encodeURIComponent(step.id)}&limit=1`, { headers: headers() });
+  if (!existingRes.ok) throw new Error('Impossibile verificare l’attività collegata');
+  const existing = await existingRes.json();
+  const payload = { title: step.title, description: step.notes || null, project_id: step.project_id, connection_practice_id: step.practice_id, source_connection_step_id: step.id, responsible_id: step.responsible_id || null, due_date: step.due_date || null, workflow_status: step.status === 'in_progress' ? 'in_progress' : step.confirmation_status === 'waiting' ? 'blocked' : 'todo', priority: step.confirmation_status === 'waiting' ? 'high' : 'normal', category: 'connection', blocker_reason: step.confirmation_status === 'waiting' ? 'In attesa di conferma esterna' : step.blocker_reason || null, next_action: step.confirmation_status === 'waiting' ? 'Ottenere la conferma e registrare l’esito' : null, notes: step.confirmation_notes || null };
+  const url = existing.length ? `${SUPABASE_URL}/rest/v1/visconti_task_board?id=eq.${encodeURIComponent(existing[0].id)}` : `${SUPABASE_URL}/rest/v1/visconti_task_board`;
+  const response = await fetch(url, { method: existing.length ? 'PATCH' : 'POST', headers: headers({ Prefer: 'return=representation' }), body: JSON.stringify(payload) });
+  if (!response.ok) throw new Error('Impossibile sincronizzare l’attività collegata');
+  const data = await response.json();
+  return data[0] || data;
+}
+
+async function attachTaskId(stepId, task) {
+  if (!task?.id) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(stepId)}`, { method: 'PATCH', headers: headers({ Prefer: 'return=minimal' }), body: JSON.stringify({ task_id: task.id }) });
+}
+
 export async function POST(request) {
   if (!okConfig()) return NextResponse.json({ error: 'Supabase non configurato' }, { status: 500 });
   try {
@@ -26,7 +45,9 @@ export async function POST(request) {
     if (title.length > 160) return NextResponse.json({ error: 'Titolo troppo lungo' }, { status: 400 });
     const practiceRes = await fetch(`${SUPABASE_URL}/rest/v1/connection_practices?select=id,project_id&id=eq.${encodeURIComponent(practiceId)}&limit=1`, { headers: headers() });
     if (!practiceRes.ok) return NextResponse.json({ error: 'Impossibile verificare la pratica' }, { status: 502 });
-    if (!(await practiceRes.json()).length) return NextResponse.json({ error: 'Pratica non trovata' }, { status: 404 });
+    const practices = await practiceRes.json();
+    if (!practices.length) return NextResponse.json({ error: 'Pratica non trovata' }, { status: 404 });
+    const practice = practices[0];
     const maxRes = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?select=sort_order&practice_id=eq.${encodeURIComponent(practiceId)}&order=sort_order.desc.nullslast&limit=1`, { headers: headers() });
     if (!maxRes.ok) return NextResponse.json({ error: 'Impossibile leggere l’ordine delle fasi' }, { status: 502 });
     const maxRows = await maxRes.json();
@@ -42,11 +63,14 @@ export async function POST(request) {
       await shiftSteps(practiceId, nextOrder);
     }
     const confirmationRequired = Boolean(body.confirmation_required);
-    const payload = { practice_id: practiceId, title, phase: body.phase || 'invio_doc', step_type: body.step_type || 'custom', is_optional: Boolean(body.is_optional), is_not_applicable: false, status: ['pending', 'in_progress', 'done'].includes(body.status) ? body.status : 'pending', sort_order: nextOrder, responsible_id: body.responsible_id || null, due_date: body.due_date || null, notes: body.notes || null, confirmation_required: confirmationRequired, confirmation_status: confirmationRequired ? 'waiting' : 'not_required' };
+    const payload = { practice_id: practiceId, title, phase: body.phase || 'invio_doc', step_type: body.step_type || 'custom', is_optional: Boolean(body.is_optional), is_not_applicable: false, status: ['pending', 'in_progress', 'done'].includes(body.status) ? body.status : 'pending', sort_order: nextOrder, responsible_id: body.responsible_id || null, due_date: body.due_date || null, notes: body.notes || null, confirmation_required: confirmationRequired, confirmation_status: confirmationRequired ? 'waiting' : 'not_required', task_required: Boolean(body.task_required || body.responsible_id || body.due_date || confirmationRequired) };
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, { method: 'POST', headers: headers({ Prefer: 'return=representation' }), body: JSON.stringify(payload) });
     const data = await response.json().catch(() => []);
     if (!response.ok) return NextResponse.json({ error: data?.message || data?.hint || 'Creazione fase fallita' }, { status: response.status });
-    return NextResponse.json(data[0] || data, { status: 201 });
+    const step = { ...(data[0] || data), project_id: practice.project_id };
+    const task = await createLinkedTask(step);
+    if (task) await attachTaskId(step.id, task);
+    return NextResponse.json({ ...step, task_id: task?.id || null }, { status: 201 });
   } catch (error) { return NextResponse.json({ error: error.message || 'Creazione fase fallita' }, { status: 500 }); }
 }
 
