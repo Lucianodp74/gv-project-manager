@@ -2,6 +2,7 @@ import ViscontiConnectionDetailV2 from "@/components/ViscontiConnectionDetailV2"
 import ViscontiConnectionControlTower from "@/components/ViscontiConnectionControlTower";
 import ViscontiConnectionMilestoneEditor from "@/components/ViscontiConnectionMilestoneEditor";
 import ViscontiConnectionWorkflowBuilder from "@/components/ViscontiConnectionWorkflowBuilder";
+import ViscontiConnectionHistory from "@/components/ViscontiConnectionHistory";
 import ViscontiConnectionListV2 from "@/components/ViscontiConnectionListV2";
 import { getViscontiConnectionData, getViscontiConnectionsData } from "@/lib/visconti-work-data";
 
@@ -18,6 +19,7 @@ export default async function ConnectionPage({ searchParams }) {
     <ViscontiConnectionControlTower data={data.controlTower} />
     <ViscontiConnectionMilestoneEditor practice={data.practice} />
     <ViscontiConnectionWorkflowBuilder practice={data.practice} steps={data.steps} members={data.members} />
-    <ViscontiConnectionDetailV2 practice={data.practice} deadlines={data.deadlines} steps={data.steps} history={data.history} />
+    <ViscontiConnectionDetailV2 practice={data.practice} deadlines={data.deadlines} steps={data.steps} />
+    <ViscontiConnectionHistory history={data.history} />
   </>;
 }
