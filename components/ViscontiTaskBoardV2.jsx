@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +20,16 @@ export default function ViscontiTaskBoardV2({ tasks = [], projects = [], members
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get("task");
+    const projectId = params.get("project");
+    if (projectId) setFilter(current => ({ ...current, project: projectId }));
+    if (!taskId) return;
+    const task = tasks.find(item => item.id === taskId);
+    if (task) openEdit(task);
+  }, [tasks]);
 
   const filtered = useMemo(() => tasks.filter(t => {
     if (filter.status === "open" && ["done", "cancelled"].includes(t.workflow_status)) return false;
