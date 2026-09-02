@@ -23,10 +23,6 @@ const practiceAliases = {
   start_works_validated_date: "start_works_validated_at",
 };
 
-function headers(extra = {}) {
-  return { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", ...extra };
-}
-
 function clean(body, type) {
   const out = {};
   for (const key of allowed[type] || []) {
@@ -40,24 +36,34 @@ function clean(body, type) {
 
 function validDate(value) { return value == null || /^\d{4}-\d{2}-\d{2}$/.test(value); }
 
-async function syncLinkedTask(stepId) {
-  const stepRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=id,practice_id,title,notes,status,responsible_id,due_date,confirmation_required,confirmation_status,confirmation_notes,blocker_reason,task_required,is_not_applicable& id=eq.${encodeURIComponent(stepId)}&limit=1`.replace("& id=", "&id="), { headers: headers(), cache: "no-store" });
-  if (!stepRes.ok) throw new Error("Impossibile leggere il passaggio aggiornato");
-  const steps = await stepRes.json();
-  if (!steps.length) return;
-  const step = steps[0];
-  const practiceRes = await fetch(`${URL}/rest/v1/connection_practices?select=project_id&id=eq.${encodeURIComponent(step.practice_id)}&limit=1`, { headers: headers(), cache: "no-store" });
-  if (!practiceRes.ok) throw new Error("Impossibile leggere la pratica collegata");
-  const practices = await practiceRes.json();
-  if (!practices.length) return;
+function headers(extra = {}) {
+  return { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", ...extra };
+}
 
-  const existingRes = await fetch(`${URL}/rest/v1/visconti_task_board?select=id&source_connection_step_id=eq.${encodeURIComponent(step.id)}&limit=1`, { headers: headers(), cache: "no-store" });
+async function syncLinkedTask(stepId) {
+  const stepRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=id,practice_id,title,notes,status,is_not_applicable,responsible_id,due_date,confirmation_required,confirmation_status,confirmation_notes,blocker_reason,task_required,task_id&id=eq.${encodeURIComponent(stepId)}&limit=1`, { headers: headers(), cache: "no-store" });
+  if (!stepRes.ok) throw new Error("Impossibile leggere la fase aggiornata");
+  const rows = await stepRes.json();
+  if (!rows.length) return;
+  const step = rows[0];
+  const mustCreate = Boolean(step.task_required || step.responsible_id || step.due_date || step.confirmation_required || step.task_id);
+  if (!mustCreate || step.is_not_applicable) return;
+
+  const practiceRes = await fetch(`${URL}/rest/v1/connection_practices?select=project_id&id=eq.${encodeURIComponent(step.practice_id)}&limit=1`, { headers: headers(), cache: "no-store" });
+  if (!practiceRes.ok) throw new Error("Impossibile leggere il progetto della pratica");
+  const practices = await practiceRes.json();
+  if (!practices.length) throw new Error("Pratica non trovata");
+
+  const existingId = step.task_id;
+  const taskQuery = existingId
+    ? `?select=id&id=eq.${encodeURIComponent(existingId)}&limit=1`
+    : `?select=id&source_connection_step_id=eq.${encodeURIComponent(step.id)}&limit=1`;
+  const existingRes = await fetch(`${URL}/rest/v1/visconti_task_board${taskQuery}`, { headers: headers(), cache: "no-store" });
   if (!existingRes.ok) throw new Error("Impossibile verificare l’attività collegata");
   const existing = await existingRes.json();
-  const shouldHaveTask = Boolean(step.task_required || step.responsible_id || step.due_date || step.confirmation_required || existing.length);
-  if (!shouldHaveTask) return;
 
-  const workflowStatus = step.status === "done" || step.is_not_applicable ? "done" : step.confirmation_status === "waiting" ? "blocked" : step.status === "in_progress" ? "in_progress" : "todo";
+  const isWaiting = step.confirmation_status === "waiting";
+  const isDone = step.status === "done";
   const payload = {
     title: step.title,
     description: step.notes || null,
@@ -66,20 +72,27 @@ async function syncLinkedTask(stepId) {
     source_connection_step_id: step.id,
     responsible_id: step.responsible_id || null,
     due_date: step.due_date || null,
-    workflow_status: workflowStatus,
-    priority: step.confirmation_status === "waiting" ? "high" : "normal",
+    workflow_status: isDone ? "done" : step.status === "in_progress" ? "in_progress" : isWaiting ? "blocked" : "todo",
+    priority: isWaiting ? "high" : "normal",
     category: "connection",
-    blocker_reason: step.confirmation_status === "waiting" ? "In attesa di conferma esterna" : step.blocker_reason || null,
-    next_action: step.confirmation_status === "waiting" ? "Ottenere la conferma e registrare l’esito" : workflowStatus === "done" ? null : "Completare il passaggio",
-    notes: step.confirmation_notes || null,
+    blocker_reason: isWaiting ? "In attesa di conferma esterna" : step.blocker_reason || null,
+    next_action: isDone ? null : isWaiting ? "Ottenere la conferma e registrare l’esito" : null,
+    notes: step.confirmation_notes || step.notes || null,
+    completed_at: isDone ? (step.completed_at || new Date().toISOString()) : null,
   };
-  const taskUrl = existing.length ? `${URL}/rest/v1/visconti_task_board?id=eq.${encodeURIComponent(existing[0].id)}` : `${URL}/rest/v1/visconti_task_board`;
-  const taskRes = await fetch(taskUrl, { method: existing.length ? "PATCH" : "POST", headers: headers({ Prefer: "return=representation" }), body: JSON.stringify(payload), cache: "no-store" });
-  if (!taskRes.ok) throw new Error("Impossibile sincronizzare l’attività collegata");
-  const taskRows = await taskRes.json().catch(() => []);
-  const taskId = existing[0]?.id || taskRows[0]?.id || taskRows?.id;
-  if (!taskId) return;
-  await fetch(`${URL}/rest/v1/connection_workflow_builder?id=eq.${encodeURIComponent(step.id)}`, { method: "PATCH", headers: headers({ Prefer: "return=minimal" }), body: JSON.stringify({ task_id: taskId }), cache: "no-store" });
+
+  const url = existing.length
+    ? `${URL}/rest/v1/visconti_task_board?id=eq.${encodeURIComponent(existing[0].id)}`
+    : `${URL}/rest/v1/visconti_task_board`;
+  const response = await fetch(url, { method: existing.length ? "PATCH" : "POST", headers: headers({ Prefer: "return=representation" }), body: JSON.stringify(payload) });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Impossibile sincronizzare l’attività collegata (${response.status})`);
+  const data = text ? JSON.parse(text) : [];
+  const task = data[0] || data;
+  if (task?.id && step.task_id !== task.id) {
+    const attach = await fetch(`${URL}/rest/v1/connection_workflow_builder?id=eq.${encodeURIComponent(step.id)}`, { method: "PATCH", headers: headers({ Prefer: "return=minimal" }), body: JSON.stringify({ task_id: task.id }) });
+    if (!attach.ok) throw new Error("Impossibile collegare l’attività alla fase");
+  }
 }
 
 export async function PATCH(request) {
