@@ -2,16 +2,10 @@
 
 import { useState } from "react";
 
-const SUPABASE_URL = "https://jyinddvvcnlxesikeggp.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_ybmz6MfUEIo-gfwB_sqyVQ_wWuFdhUV";
-
 async function decideRequest(projectId, decision) {
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/visconti-control-tower-decision`, {
+  const response = await fetch("/api/visconti-control-tower-decision", {
     method: "POST",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ projectId, decision }),
     cache: "no-store",
   });
