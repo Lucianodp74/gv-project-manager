@@ -8,14 +8,18 @@ async function parse(response) {
   return data;
 }
 
+async function getProject(projectId) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/projects?id=eq.${encodeURIComponent(projectId)}&select=${SELECT}&limit=1`, {headers:{apikey:SUPABASE_KEY},cache:"no-store"});
+  const rows = await parse(response);
+  if (!rows?.length) throw new Error("Progetto non trovato");
+  return rows[0];
+}
+
 export async function GET(request) {
   try {
     const projectId = String(new URL(request.url).searchParams.get("projectId") || "");
     if (!projectId) return Response.json({error:"ProjectId mancante"},{status:400});
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/projects?id=eq.${encodeURIComponent(projectId)}&select=${SELECT}&limit=1`, {headers:{apikey:SUPABASE_KEY},cache:"no-store"});
-    const rows = await parse(response);
-    if (!rows?.length) return Response.json({error:"Progetto non trovato"},{status:404});
-    return Response.json(rows[0]);
+    return Response.json(await getProject(projectId));
   } catch(error) { console.error("visconti-project-spv GET",error); return Response.json({error:error instanceof Error?error.message:"Lettura non riuscita"},{status:500}); }
 }
 
@@ -26,6 +30,27 @@ export async function POST(request) {
     const allowed=["spv_name","spv_vat_number","spv_tax_code","spv_pec","spv_registered_office","spv_incorporation_date","spv_status","connection_transfer_protocol","connection_transfer_request_date","connection_transfer_completed_date","connection_transfer_status","connection_holder","spv_notes"];
     const clean=Object.fromEntries(Object.entries(fields).filter(([key])=>allowed.includes(key)));
     if(!Object.keys(clean).length) return Response.json({error:"Nessun campo valido"},{status:400});
+
+    const current = await getProject(projectId);
+    const effective = {...current,...clean};
+    if (current.go_no_go_status !== "go") {
+      return Response.json({error:"Il percorso SPV/voltura può essere aggiornato solo dopo un GO confermato."},{status:409});
+    }
+    if (clean.spv_status === "created") {
+      if (!String(effective.spv_name||"").trim() || !String(effective.spv_vat_number||"").trim() || !String(effective.spv_pec||"").trim()) {
+        return Response.json({error:"Per segnare la SPV come costituita servono Nome SPV, P.IVA e PEC."},{status:422});
+      }
+    }
+    if (clean.connection_transfer_status === "completed") {
+      if (effective.spv_status !== "created") return Response.json({error:"La voltura non può essere completata prima della costituzione della SPV."},{status:422});
+      if (!String(effective.connection_transfer_protocol||"").trim() || !effective.connection_transfer_request_date || !effective.connection_transfer_completed_date) {
+        return Response.json({error:"Per completare la voltura servono protocollo, data richiesta e data completamento."},{status:422});
+      }
+    }
+    if (["to_request","in_progress","integrations","accepted"].includes(clean.connection_transfer_status) && !effective.spv_name && clean.connection_transfer_status !== "to_request") {
+      return Response.json({error:"Indicare prima la società veicolo per proseguire con la voltura."},{status:422});
+    }
+
     const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/visconti_project_spv_update`,{method:"POST",headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({p_project_id:projectId,p_fields:clean}),cache:"no-store"});
     const data=await parse(response); return Response.json(data??{ok:true},{status:200});
   } catch(error) { console.error("visconti-project-spv POST",error); return Response.json({error:error instanceof Error?error.message:"Operazione non riuscita"},{status:500}); }
