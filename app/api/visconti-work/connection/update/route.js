@@ -13,7 +13,7 @@ const enums = {
   stepStatus: new Set(["pending", "in_progress", "done"]),
   confirmationStatus: new Set(["not_required", "waiting", "confirmed", "validated", "rejected"]),
   deadlineStatus: new Set(["open", "completed", "overdue", "cancelled"]),
-  authorizationStatus: new Set(["not_started", "in_progress", "completed", "suspended", "cancelled"]),
+  authorizationStatus: new Set(["not_started", "in_progress", "completed", "title_perfected", "suspended", "cancelled"]),
 };
 
 const practiceAliases = {
