@@ -16,6 +16,6 @@ export default async function ProjectPage({ searchParams }) {
   if (params?.id) {
     return <><ViscontiProjectActionFrame projectId={params.id} /><ViscontiProjectDetailV2 /></>;
   }
-  const data = await getViscontiWorkData();
+  const data = await getViscontiWorkData({ includeArchived: true });
   return <ViscontiProjectListV2 projects={data.projects} connected={data.connected} />;
 }
