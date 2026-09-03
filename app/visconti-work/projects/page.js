@@ -3,6 +3,9 @@ import ViscontiProjectOperationalSummary from "@/components/ViscontiProjectOpera
 import ViscontiProjectListV2 from "@/components/ViscontiProjectListV2";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "Progetti · Visconti Work V2",
   description: "Portafoglio operativo di progetto — Gruppo Visconti",
