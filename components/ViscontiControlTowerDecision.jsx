@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://jyinddvvcnlxesikeggp.supabase.co";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_ybmz6MfUEIo-gfwB_sqyVQ_wWuFdhUV";
+const SUPABASE_URL = "https://jyinddvvcnlxesikeggp.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ybmz6MfUEIo-gfwB_sqyVQ_wWuFdhUV";
 
 async function request(path, options = {}) {
   const headers = { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json", ...(options.headers || {}) };
-  if (!SUPABASE_ANON_KEY.startsWith("sb_publishable_")) headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
     headers,
@@ -21,7 +20,6 @@ async function request(path, options = {}) {
 export default function ViscontiControlTowerDecision({ projectId, status = "pending" }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
   if (!projectId || status !== "pending") return null;
 
   async function decide(next) {
@@ -44,7 +42,6 @@ export default function ViscontiControlTowerDecision({ projectId, status = "pend
           updated_at: new Date().toISOString(),
         }),
       });
-
       if (next === "go") {
         const titles = ["Costituire società veicolo", "Aprire P.IVA e PEC", "Richiedere voltura della connessione"];
         const existing = await request(`visconti_task_board?project_id=eq.${encodeURIComponent(projectId)}&select=id,title`);
