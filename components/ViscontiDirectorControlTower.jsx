@@ -25,7 +25,7 @@ export default function ViscontiDirectorControlTower({ data = {} }) {
   const rejectedConfirmations = projects.reduce((sum, p) => sum + Number(p.rejected_terna_confirmations || 0), 0);
   const totalConfirmations = projects.reduce((sum, p) => sum + Number(p.terna_confirmations || 0), 0);
   const exceptions = projects
-    .filter((p) => p.risk_level !== "normal" || Number(p.blockers || 0) > 0 || Number(p.overdue_tasks || 0) > 0 || Number(p.waiting_terna_confirmations || 0) > 0 || Number(p.rejected_terna_confirmations || 0) > 0)
+    .filter((p) => Number(p.blockers || 0) > 0 || Number(p.overdue_tasks || 0) > 0 || Number(p.waiting_terna_confirmations || 0) > 0 || Number(p.rejected_terna_confirmations || 0) > 0)
     .slice(0, 8);
   const focus = [...open]
     .filter((t) => t.attention_state === "overdue" || t.attention_state === "urgent" || t.workflow_status === "blocked" || t.is_terna_confirmation_task)
