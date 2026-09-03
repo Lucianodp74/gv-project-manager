@@ -17,6 +17,7 @@ const AUTH_STATUS = [
   ['not_started', 'Non avviato'],
   ['in_progress', 'In corso'],
   ['completed', 'Completato'],
+  ['title_perfected', 'Titolo perfezionato'],
   ['suspended', 'Sospeso'],
   ['cancelled', 'Annullato'],
 ];
