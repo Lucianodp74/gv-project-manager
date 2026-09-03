@@ -3,12 +3,14 @@
 import { useState } from "react";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://jyinddvvcnlxesikeggp.supabase.co";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5aW5kZHZ2Y25seGVzaWtlZ2dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNDk0MTIsImV4cCI6MjEwMzkyNTQxMn0.408iZrkj5i2Ikh0FL91N1a1AuDJFAAIehD0H9q6G9s";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_ybmz6MfUEIo-gfwB_sqyVQ_wWuFdhUV";
 
 async function request(path, options = {}) {
+  const headers = { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json", ...(options.headers || {}) };
+  if (!SUPABASE_ANON_KEY.startsWith("sb_publishable_")) headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", ...(options.headers || {}) },
+    headers,
     cache: "no-store",
   });
   if (!response.ok) throw new Error(`Operazione non riuscita (${response.status}).`);
