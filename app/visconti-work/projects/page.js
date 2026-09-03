@@ -2,6 +2,7 @@ import ViscontiProjectDetailV2 from "@/components/ViscontiProjectDetailV2";
 import ViscontiProjectActionFrame from "@/components/ViscontiProjectActionFrame";
 import ViscontiProjectListV2 from "@/components/ViscontiProjectListV2";
 import ViscontiProjectSpvWorkflow from "@/components/ViscontiProjectSpvWorkflow";
+import ViscontiNewProject from "@/components/ViscontiNewProject";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 
 export const dynamic = "force-dynamic";
@@ -18,5 +19,5 @@ export default async function ProjectPage({ searchParams }) {
     return <><ViscontiProjectActionFrame projectId={params.id} /><ViscontiProjectSpvWorkflow projectId={params.id} /><ViscontiProjectDetailV2 /></>;
   }
   const data = await getViscontiWorkData({ includeArchived: true });
-  return <ViscontiProjectListV2 projects={data.projects} connected={data.connected} />;
+  return <><div style={{maxWidth:1480,margin:"0 auto",padding:"18px 34px 0",display:"flex",justifyContent:"flex-end"}}><ViscontiNewProject members={data.members} /></div><ViscontiProjectListV2 projects={data.projects} connected={data.connected} /> </>;
 }
