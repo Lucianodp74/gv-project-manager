@@ -1,4 +1,5 @@
 import ViscontiDirectorControlTower from "@/components/ViscontiDirectorControlTower";
+import ViscontiControlTowerDecisionPanel from "@/components/ViscontiControlTowerDecisionPanel";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 
 export const dynamic = "force-dynamic";
@@ -11,5 +12,5 @@ export const metadata = {
 
 export default async function ViscontiWorkPage() {
   const data = await getViscontiWorkData();
-  return <ViscontiDirectorControlTower data={data} />;
+  return <><ViscontiControlTowerDecisionPanel projects={data.projects || []} /><ViscontiDirectorControlTower data={data} /></>;
 }
