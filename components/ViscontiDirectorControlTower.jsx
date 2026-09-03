@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 
-const stage = { opportunity: "Opportunità", connection: "Connessione", go_decision: "GO / NO-GO", development: "Sviluppo", presentation: "Presentazione", authorization: "Autorizzazione", commercial: "Commerciale", authorized: "Autorizzato", closed: "Chiuso" };
+const stage = { opportunity: "Opportunità", connection: "Connessione", go_decision: "GO / NO-GO", development: "Sviluppo", presentation: "Presentazione", authorization: "Autorizzazione", commercial: "Commerciale", authorized: "Autorizzato", closed: "Chiuso", archived: "Archiviato" };
 function Badge({ children, tone = "blue" }) { return <span className={`vd-badge vd-${tone}`}>{children}</span>; }
 function tone(p) { if (Number(p.rejected_terna_confirmations || 0) > 0 || Number(p.blockers || 0) > 0 || p.risk_level === "critical") return "red"; if (Number(p.waiting_terna_confirmations || 0) > 0 || Number(p.overdue_tasks || 0) > 0 || p.risk_level === "attention" || Number(p.open_tasks || 0) > 0) return "amber"; return "green"; }
 function fmtDate(value) { return value ? new Date(`${String(value).slice(0, 10)}T00:00:00`).toLocaleDateString("it-IT") : "—"; }
 function taskHref(task) { const query = new URLSearchParams({ task: task.id }); if (task.project_id) query.set("project", task.project_id); return `/visconti-work/tasks?${query.toString()}`; }
 
 export default function ViscontiDirectorControlTower({ data = {} }) {
-  const projects = data.projects || [], tasks = data.tasks || [];
+  const projects = (data.projects || []).filter((p) => p.project_status !== "archived");
+  const activeProjectIds = new Set(projects.map((p) => p.project_id));
+  const tasks = (data.tasks || []).filter((t) => !t.project_id || activeProjectIds.has(t.project_id));
   const open = tasks.filter((t) => !["done", "cancelled"].includes(t.workflow_status));
-  const blocked = tasks.filter((t) => t.workflow_status === "blocked" || t.attention_state === "blocked");
+  const blocked = open.filter((t) => t.workflow_status === "blocked" || t.attention_state === "blocked");
   const overdue = projects.reduce((sum, p) => sum + Number(p.overdue_tasks || 0), 0);
   const waitingConfirmations = projects.reduce((sum, p) => sum + Number(p.waiting_terna_confirmations || 0), 0);
   const rejectedConfirmations = projects.reduce((sum, p) => sum + Number(p.rejected_terna_confirmations || 0), 0);
