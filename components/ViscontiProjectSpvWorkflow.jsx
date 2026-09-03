@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://jyinddvvcnlxesikeggp.supabase.co";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5aW5kZHZ2Y25seXJpa2VnZ3AiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4ODM0OTQxMiwiZXhwIjoyMTAzOTI1NDEyfQ.408iZrkj5i2Ikh0FL91N1a1AuDJFAAIehD0H9q6G9s";
 
 async function request(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -47,7 +47,7 @@ export default function ViscontiProjectSpvWorkflow({ projectId }) {
       const date = new Date().toISOString().slice(0, 10);
       await request(`projects?id=eq.${encodeURIComponent(project.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ go_no_go_status: next, go_no_go_date: date, spv_status: next === "go" ? "to_create" : "cancelled", connection_transfer_status: next === "go" ? "to_request" : "not_applicable", updated_at: new Date().toISOString() }) });
       if (next === "go") {
-        const existing = await request(`visconti_task_board?project_id=eq.${encodeURIComponent(project.id)}&select=id,title&title=in.(${encodeURIComponent("Costituire società veicolo")},${encodeURIComponent("Aprire P.IVA e PEC")},${encodeURIComponent("Richiedere voltura della connessione")})`);
+        const existing = await request(`visconti_task_board?project_id=eq.${encodeURIComponent(project.id)}&select=id,title`);
         const existingTitles = new Set(existing.map(t => t.title));
         const tasks = [
           ["Costituire società veicolo", "Costituire la SPV del progetto dopo la decisione GO.", "general"],
