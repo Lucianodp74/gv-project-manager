@@ -1,4 +1,5 @@
 import ViscontiDirectorControlTower from "@/components/ViscontiDirectorControlTower";
+import ViscontiPostGoPanel from "@/components/ViscontiPostGoPanel";
 import { getViscontiControlTowerData } from "@/lib/visconti-control-tower-data";
 
 export const dynamic = "force-dynamic";
@@ -11,5 +12,5 @@ export const metadata = {
 
 export default async function ViscontiWorkPage() {
   const data = await getViscontiControlTowerData();
-  return <ViscontiDirectorControlTower data={data} />;
+  return <><ViscontiPostGoPanel data={data} /><ViscontiDirectorControlTower data={data} /></>;
 }
