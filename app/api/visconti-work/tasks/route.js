@@ -61,10 +61,16 @@ export async function PATCH(request) {
   try {
     const body = await request.json();
     if (!body?.id) throw new Error("ID attività obbligatorio");
+    const currentResponse = await supabase(`${TABLE}?id=eq.${encodeURIComponent(body.id)}&select=*`, { method: "GET" });
+    const currentData = await currentResponse.json();
+    if (!currentResponse.ok) return new Response(JSON.stringify({ error: currentData?.message || "Lettura attività fallita" }), { status: currentResponse.status, headers: { "Content-Type": "application/json" } });
+    const current = currentData?.[0];
+    if (!current) return new Response(JSON.stringify({ error: "Attività non trovata" }), { status: 404, headers: { "Content-Type": "application/json" } });
     const payload = clean(body, true);
+    const effective = { ...current, ...payload };
     if (payload.workflow_status === "done" && payload.completed_at === undefined) payload.completed_at = new Date().toISOString();
     if (payload.workflow_status && payload.workflow_status !== "done") payload.completed_at = null;
-    payload.attention_state = derivedAttention({ ...body, ...payload });
+    payload.attention_state = derivedAttention(effective);
     const response = await supabase(`${TABLE}?id=eq.${encodeURIComponent(body.id)}`, { method: "PATCH", body: JSON.stringify(payload) });
     const data = await response.json();
     if (!response.ok) return new Response(JSON.stringify({ error: data?.message || "Aggiornamento attività fallito" }), { status: response.status, headers: { "Content-Type": "application/json" } });
