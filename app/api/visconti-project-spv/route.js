@@ -1,57 +1,7 @@
 const SUPABASE_URL = "https://jyinddvvcnlxesikeggp.supabase.co";
 const SUPABASE_KEY = "sb_publishable_ybmz6MfUEIo-gfwB_sqyVQ_wWuFdhUV";
-const SELECT = "id,name,go_no_go_status,go_no_go_date,go_no_go_notes,spv_name,spv_status,spv_vat_number,spv_tax_code,spv_pec,spv_registered_office,spv_incorporation_date,connection_holder,connection_transfer_status,connection_transfer_request_date,connection_transfer_completed_date,connection_transfer_protocol,spv_notes";
-
-async function parse(response) {
-  const text = await response.text(); let data=null; try { data=text?JSON.parse(text):null; } catch (_) {}
-  if (!response.ok) throw new Error(data?.message || data?.error || data?.hint || `Supabase ${response.status}`);
-  return data;
-}
-
-async function getProject(projectId) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/projects?id=eq.${encodeURIComponent(projectId)}&select=${SELECT}&limit=1`, {headers:{apikey:SUPABASE_KEY},cache:"no-store"});
-  const rows = await parse(response);
-  if (!rows?.length) throw new Error("Progetto non trovato");
-  return rows[0];
-}
-
-export async function GET(request) {
-  try {
-    const projectId = String(new URL(request.url).searchParams.get("projectId") || "");
-    if (!projectId) return Response.json({error:"ProjectId mancante"},{status:400});
-    return Response.json(await getProject(projectId));
-  } catch(error) { console.error("visconti-project-spv GET",error); return Response.json({error:error instanceof Error?error.message:"Lettura non riuscita"},{status:500}); }
-}
-
-export async function POST(request) {
-  try {
-    const body = await request.json(); const projectId=String(body?.projectId||""); const fields=body?.fields;
-    if (!projectId || !fields || typeof fields!=="object" || Array.isArray(fields)) return Response.json({error:"Parametri non validi"},{status:400});
-    const allowed=["spv_name","spv_vat_number","spv_tax_code","spv_pec","spv_registered_office","spv_incorporation_date","spv_status","connection_transfer_protocol","connection_transfer_request_date","connection_transfer_completed_date","connection_transfer_status","connection_holder","spv_notes"];
-    const clean=Object.fromEntries(Object.entries(fields).filter(([key])=>allowed.includes(key)));
-    if(!Object.keys(clean).length) return Response.json({error:"Nessun campo valido"},{status:400});
-
-    const current = await getProject(projectId);
-    const effective = {...current,...clean};
-    if (current.go_no_go_status !== "go") {
-      return Response.json({error:"Il percorso SPV/voltura può essere aggiornato solo dopo un GO confermato."},{status:409});
-    }
-    if (clean.spv_status === "created") {
-      if (!String(effective.spv_name||"").trim() || !String(effective.spv_vat_number||"").trim() || !String(effective.spv_pec||"").trim()) {
-        return Response.json({error:"Per segnare la SPV come costituita servono Nome SPV, P.IVA e PEC."},{status:422});
-      }
-    }
-    if (clean.connection_transfer_status === "completed") {
-      if (effective.spv_status !== "created") return Response.json({error:"La voltura non può essere completata prima della costituzione della SPV."},{status:422});
-      if (!String(effective.connection_transfer_protocol||"").trim() || !effective.connection_transfer_request_date || !effective.connection_transfer_completed_date) {
-        return Response.json({error:"Per completare la voltura servono protocollo, data richiesta e data completamento."},{status:422});
-      }
-    }
-    if (["to_request","in_progress","integrations","accepted"].includes(clean.connection_transfer_status) && !effective.spv_name && clean.connection_transfer_status !== "to_request") {
-      return Response.json({error:"Indicare prima la società veicolo per proseguire con la voltura."},{status:422});
-    }
-
-    const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/visconti_project_spv_update`,{method:"POST",headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({p_project_id:projectId,p_fields:clean}),cache:"no-store"});
-    const data=await parse(response); return Response.json(data??{ok:true},{status:200});
-  } catch(error) { console.error("visconti-project-spv POST",error); return Response.json({error:error instanceof Error?error.message:"Operazione non riuscita"},{status:500}); }
-}
+const SELECT = "id,name,go_no_go_status,go_no_go_date,go_no_go_notes,spv_name,spv_status,spv_vat_number,spv_tax_code,spv_pec,spv_registered_office,spv_incorporation_date,connection_holder,connection_transfer_status,connection_transfer_request_date,connection_transfer_completed_date,connection_transfer_protocol,spv_notes,spv_incorporation_done_at,spv_incorporation_received_at,spv_vat_done_at,spv_vat_received_at,spv_pec_done_at,spv_pec_received_at,connection_transfer_done_at,connection_transfer_received_at,connection_transfer_received_protocol";
+async function parse(response){const text=await response.text();let data=null;try{data=text?JSON.parse(text):null;}catch(_){}if(!response.ok)throw new Error(data?.message||data?.error||data?.hint||`Supabase ${response.status}`);return data;}
+async function getProject(projectId){const response=await fetch(`${SUPABASE_URL}/rest/v1/projects?id=eq.${encodeURIComponent(projectId)}&select=${SELECT}&limit=1`,{headers:{apikey:SUPABASE_KEY},cache:"no-store"});const rows=await parse(response);if(!rows?.length)throw new Error("Progetto non trovato");return rows[0];}
+export async function GET(request){try{const projectId=String(new URL(request.url).searchParams.get("projectId")||"");if(!projectId)return Response.json({error:"ProjectId mancante"},{status:400});return Response.json(await getProject(projectId));}catch(error){return Response.json({error:error instanceof Error?error.message:"Lettura non riuscita"},{status:500});}}
+export async function POST(request){try{const body=await request.json();const projectId=String(body?.projectId||"");const fields=body?.fields;if(!projectId||!fields||typeof fields!=="object"||Array.isArray(fields))return Response.json({error:"Parametri non validi"},{status:400});const allowed=["spv_name","spv_vat_number","spv_tax_code","spv_pec","spv_registered_office","spv_incorporation_date","spv_status","connection_transfer_protocol","connection_transfer_request_date","connection_transfer_completed_date","connection_transfer_status","connection_holder","spv_notes","spv_incorporation_done","spv_incorporation_received","spv_vat_done","spv_vat_received","spv_pec_done","spv_pec_received","connection_transfer_done","connection_transfer_received","connection_transfer_received_protocol"];const clean=Object.fromEntries(Object.entries(fields).filter(([key])=>allowed.includes(key)));if(!Object.keys(clean).length)return Response.json({error:"Nessun campo valido"},{status:400});const current=await getProject(projectId);if(current.go_no_go_status!=="go")return Response.json({error:"Il percorso SPV/voltura può essere aggiornato solo dopo un GO confermato."},{status:409});const effective={...current,...clean};if(clean.spv_status==="created"&&(!String(effective.spv_name||"").trim()||!String(effective.spv_vat_number||"").trim()||!String(effective.spv_pec||"").trim()))return Response.json({error:"Per segnare la SPV come costituita servono Nome SPV, P.IVA e PEC."},{status:422});if(clean.connection_transfer_status==="completed"){if(effective.spv_status!=="created")return Response.json({error:"La voltura non può essere completata prima della costituzione della SPV."},{status:422});if(!String(effective.connection_transfer_protocol||"").trim()||!effective.connection_transfer_request_date||!effective.connection_transfer_completed_date)return Response.json({error:"Per completare la voltura servono protocollo, data richiesta e data completamento."},{status:422});}const pairs=[["spv_incorporation_received","spv_incorporation_done_at","spv_incorporation_done","costituzione SPV"],["spv_vat_received","spv_vat_done_at","spv_vat_done","P.IVA"],["spv_pec_received","spv_pec_done_at","spv_pec_done","PEC"],["connection_transfer_received","connection_transfer_done_at","connection_transfer_done","voltura"]];for(const[received,doneAt,done,label]of pairs){if(clean[received]===true&&!current[doneAt]&&clean[done]!==true)return Response.json({error:`La conferma ricevuta per ${label} richiede prima FATTO.`},{status:422});}if(clean.connection_transfer_received===true&&!String(clean.connection_transfer_received_protocol||current.connection_transfer_received_protocol||"").trim())return Response.json({error:"Per registrare la conferma ricevuta della voltura indicare il protocollo ricevuto."},{status:422});const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/visconti_project_spv_update`,{method:"POST",headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({p_project_id:projectId,p_fields:clean}),cache:"no-store"});return Response.json((await parse(response))??{ok:true},{status:200});}catch(error){return Response.json({error:error instanceof Error?error.message:"Operazione non riuscita"},{status:500});}}
