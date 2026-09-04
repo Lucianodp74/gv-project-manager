@@ -8,7 +8,7 @@ async function supabase(path, options = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...options, headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation", ...(options.headers || {}) } });
 }
 
-const allowed = new Set(["title", "description", "project_id", "assignee_person_id", "priority", "workflow_status", "attention_state", "blocker_reason", "notes", "due_date", "completed_at", "category", "connection_practice_id", "next_action"]);
+const allowed = new Set(["title", "description", "project_id", "assignee_person_id", "priority", "workflow_status", "attention_state", "blocker_reason", "notes", "due_date", "completed_at", "category", "connection_practice_id", "next_action", "action_done_at", "request_done_at", "response_received_at", "response_protocol"]);
 const priorities = new Set(["low", "normal", "high", "urgent"]);
 const statuses = new Set(["todo", "in_progress", "blocked", "done", "cancelled"]);
 const categories = new Set(["general", "connection", "design", "gis", "land", "specialist", "authority", "document", "commercial", "internal"]);
@@ -68,6 +68,9 @@ export async function PATCH(request) {
     if (!current) return new Response(JSON.stringify({ error: "Attività non trovata" }), { status: 404, headers: { "Content-Type": "application/json" } });
     const payload = clean(body, true);
     const effective = { ...current, ...payload };
+    if (payload.request_done_at === undefined && payload.action_done_at !== undefined) payload.request_done_at = payload.action_done_at;
+    if (payload.request_done_at && !current.request_done_at) payload.action_done_at = payload.request_done_at;
+    if (payload.response_received_at && !effective.request_done_at) throw new Error("Prima devi confermare FATTO: la richiesta deve essere stata realmente inviata.");
     if (payload.workflow_status === "done" && payload.completed_at === undefined) payload.completed_at = new Date().toISOString();
     if (payload.workflow_status && payload.workflow_status !== "done") payload.completed_at = null;
     payload.attention_state = derivedAttention(effective);
