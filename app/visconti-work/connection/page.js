@@ -3,6 +3,7 @@ import ViscontiConnectionControlTower from "@/components/ViscontiConnectionContr
 import ViscontiConnectionMilestoneEditor from "@/components/ViscontiConnectionMilestoneEditor";
 import ViscontiConnectionWorkflowBuilder from "@/components/ViscontiConnectionWorkflowBuilder";
 import ViscontiConnectionListV2 from "@/components/ViscontiConnectionListV2";
+import connectionStyles from "./connection-overrides.module.css";
 import { getViscontiConnectionData, getViscontiConnectionsData } from "@/lib/visconti-work-data";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +18,10 @@ export default async function ConnectionPage({ searchParams }) {
     return <ViscontiConnectionListV2 connections={data.connections} connected={data.connected} />;
   }
   const data = await getViscontiConnectionData(params?.practice || null, params?.project || null);
-  return <>
+  return <div className={connectionStyles.connectionFix}>
     <ViscontiConnectionControlTower data={data.controlTower} />
     <ViscontiConnectionMilestoneEditor practice={data.practice} />
     <ViscontiConnectionWorkflowBuilder practice={data.practice} steps={data.steps} members={data.members} />
     <ViscontiConnectionDetailV2 practice={data.practice} deadlines={data.deadlines} steps={data.steps} />
-  </>;
+  </div>;
 }
