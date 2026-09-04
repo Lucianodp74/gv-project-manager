@@ -1,4 +1,5 @@
 import ViscontiTaskBoardV2 from "@/components/ViscontiTaskBoardV2";
+import ViscontiRequestTracking from "@/components/ViscontiRequestTracking";
 import { getViscontiTaskData } from "@/lib/visconti-task-data";
 
 export const dynamic = "force-dynamic";
@@ -11,5 +12,5 @@ export const metadata = {
 
 export default async function TasksPage() {
   const data = await getViscontiTaskData();
-  return <ViscontiTaskBoardV2 {...data} />;
+  return <><ViscontiTaskBoardV2 {...data} /><ViscontiRequestTracking tasks={data.tasks || []} /></>;
 }
