@@ -1,26 +1,173 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-const STATUS={pending:'Da avviare',in_progress:'In corso',done:'Completato'};
-const TYPE={milestone:'Milestone',deadline:'Scadenza',document:'Documento',approval:'Approvazione',technical:'Tecnica',authority:'Ente / parere',custom:'Personalizzata'};
-const CONF={not_required:'',waiting:'In attesa Terna',confirmed:'Confermato da Terna',validated:'Validato da Terna',rejected:'Respinto / da verificare'};
-const TEMPLATES={standard:{label:'Connessione standard',items:[['Richiesta connessione','milestone',false],['Invio documenti','document',false],['PTO / STMG ricevuto','document',false],['PTO inviato a Terna — attesa conferma','document',true],['PTO accettato','approval',false],['Avvio iter autorizzativo','milestone',false],['Accettazione / chiusura connessione','approval',false]]},integrazioni:{label:'Connessione con integrazioni',items:[['Richiesta connessione','milestone',false],['Invio documenti','document',false],['Richiesta integrazione','authority',false],['Invio integrazione','document',false],['PTO / STMG ricevuto','document',false],['PTO inviato a Terna — attesa conferma','document',true],['PTO accettato','approval',false],['Avvio iter autorizzativo','milestone',false]]},proroga:{label:'Proroga / variazione',items:[['Richiesta proroga','authority',true],['Istruttoria proroga','technical',false],['Proroga concessa','approval',true],['Nuova scadenza operativa','deadline',false],['Proroga inizio lavori — attesa conferma Terna','deadline',true]]},autorizzativo:{label:'Iter autorizzativo complesso',items:[['Avvio iter autorizzativo','milestone',false],['Richiesta parere ente','authority',true],['Invio integrazioni','document',false],['Conferenza / tavolo tecnico','technical',false],['Parere favorevole','approval',false],['Prescrizioni da recepire','authority',true],['Provvedimento autorizzativo','approval',true]]}};
-const DEMO=[{id:'demo-1',title:'Richiesta connessione',status:'done',sort_order:1,step_type:'milestone'},{id:'demo-2',title:'PTO ricevuto',status:'in_progress',sort_order:2,step_type:'document'},{id:'demo-3',title:'PTO inviato — attesa conferma Terna',status:'in_progress',sort_order:3,step_type:'document',confirmation_required:true,confirmation_status:'waiting'}];
-export default function ViscontiConnectionWorkflowBuilder({practice,steps=[],members=[]}){
- const router=useRouter(); const [editing,setEditing]=useState(null); const [adding,setAdding]=useState(false); const [insertAnchor,setInsertAnchor]=useState(null); const [insertPosition,setInsertPosition]=useState('after'); const [newTitle,setNewTitle]=useState(''); const [newType,setNewType]=useState('custom'); const [newOptional,setNewOptional]=useState(false); const [newConfirmation,setNewConfirmation]=useState(false); const [newResponsible,setNewResponsible]=useState(''); const [newDueDate,setNewDueDate]=useState(''); const [saving,setSaving]=useState(false); const [message,setMessage]=useState('');
- const rows=useMemo(()=>steps?.length?[...steps].sort((a,b)=>(a.sort_order??0)-(b.sort_order??0)):DEMO,[steps]); const real=Boolean(practice?.id);
- async function request(url,options){const res=await fetch(url,options);const json=await res.json().catch(()=>({}));if(!res.ok)throw new Error(json.error||'Operazione fallita');return json;}
- async function patch(id,payload){setSaving(true);setMessage('');try{await request('/api/visconti-work/connection/update',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'step',id,...payload})});setEditing(null);setMessage('Salvato');router.refresh();}catch(e){setMessage(e.message);}finally{setSaving(false);}}
- function openAdd(anchor=null,position='after'){setInsertAnchor(anchor);setInsertPosition(position);setAdding(true);setMessage('');}
- function resetAdd(){setAdding(false);setInsertAnchor(null);setInsertPosition('after');setNewTitle('');setNewType('custom');setNewOptional(false);setNewConfirmation(false);setNewResponsible('');setNewDueDate('');}
- async function addStep(){if(!newTitle.trim())return setMessage('Inserisci il nome della fase');setSaving(true);setMessage('');try{await request('/api/visconti-work/connection/steps',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({practice_id:practice.id,title:newTitle.trim(),step_type:newType,is_optional:newOptional,responsible_id:newResponsible||null,due_date:newDueDate||null,confirmation_required:newConfirmation,confirmation_status:newConfirmation?'waiting':'not_required',position:insertAnchor?insertPosition:'after_end',anchor_id:insertAnchor||null})});resetAdd();setMessage('Fase aggiunta');router.refresh();}catch(e){setMessage(e.message);}finally{setSaving(false);}}
- async function applyTemplate(key){if(!real)return;const template=TEMPLATES[key];if(rows.length&&!window.confirm(`Aggiungere il modello “${template.label}” alle fasi esistenti?`))return;setSaving(true);setMessage('');try{for(const [title,step_type,confirmation_required] of template.items){await request('/api/visconti-work/connection/steps',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({practice_id:practice.id,title,step_type,is_optional:false,confirmation_required,confirmation_status:confirmation_required?'waiting':'not_required',position:'after_end'})});}setMessage(`Modello “${template.label}” applicato`);router.refresh();}catch(e){setMessage(e.message);}finally{setSaving(false);}}
- async function moveStep(index,direction){const targetIndex=index+direction;if(targetIndex<0||targetIndex>=rows.length||!real)return;const orderedIds=rows.map((row,i)=>i===index?rows[targetIndex].id:i===targetIndex?rows[index].id:row.id);setSaving(true);setMessage('');try{await request('/api/visconti-work/connection/reorder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({practice_id:practice.id,ordered_ids:orderedIds})});setMessage('Ordine aggiornato');router.refresh();}catch(e){setMessage(e.message);}finally{setSaving(false);}}
- function confirmationActions(step){if(!step.confirmation_required)return null;return <div className="mt-2 flex flex-wrap items-center gap-1"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${step.confirmation_status==='confirmed'?'bg-emerald-50 text-emerald-700':step.confirmation_status==='validated'?'bg-blue-50 text-blue-700':step.confirmation_status==='rejected'?'bg-red-50 text-red-700':'bg-amber-50 text-amber-700'}`}>{CONF[step.confirmation_status]||'In attesa Terna'}</span>{step.confirmation_status!=='confirmed'&&<button disabled={saving} className="rounded-md border px-2 py-1 text-[10px]" onClick={()=>patch(step.id,{confirmation_status:'confirmed'})}>✓ Confermato</button>}{step.confirmation_status!=='validated'&&<button disabled={saving} className="rounded-md border px-2 py-1 text-[10px]" onClick={()=>patch(step.id,{confirmation_status:'validated'})}>✓ Validato</button>}{step.confirmation_status!=='rejected'&&<button disabled={saving} className="rounded-md border border-red-200 px-2 py-1 text-[10px] text-red-600" onClick={()=>patch(step.id,{confirmation_status:'rejected'})}>Respinto</button>}</div>}
- return <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-4 flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-base font-semibold text-slate-900">Workflow Builder</h2><p className="mt-1 text-xs text-slate-500">Ogni pratica ha un iter configurabile. Le fasi che richiedono risposta Terna restano in attesa finché non vengono confermate o validate.</p></div><div className="flex flex-wrap gap-2"><select disabled={!real||saving} defaultValue="" onChange={e=>{if(e.target.value)applyTemplate(e.target.value);e.target.value=''}} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold"><option value="">Applica modello…</option>{Object.entries(TEMPLATES).map(([k,t])=><option key={k} value={k}>{t.label}</option>)}</select><button disabled={!real||saving} onClick={()=>openAdd()} className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">+ Aggiungi fase</button></div></div>
- <div className="space-y-2">{rows.map((step,index)=><div key={step.id||index} className={`grid gap-3 rounded-xl border p-3 md:grid-cols-[32px_1fr_auto_auto] ${step.is_not_applicable?'border-dashed bg-slate-50 opacity-60':'border-slate-200'}`}><div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{index+1}</div><div><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold text-slate-900">{step.title||step.phase||'Passaggio'}</span>{step.step_type&&<span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">{TYPE[step.step_type]||step.step_type}</span>}{step.is_optional&&<span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">OPZIONALE</span>}{step.is_not_applicable&&<span className="rounded-full bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-600">NON NECESSARIO</span>}</div><div className="mt-1 text-[11px] text-slate-500">{step.responsible_name||'Responsabile da assegnare'} · {step.due_date||'senza scadenza'}{step.blocker_reason?` · Blocco: ${step.blocker_reason}`:''}</div>{confirmationActions(step)}<div className="mt-2 flex flex-wrap gap-1"><button disabled={saving} className="rounded-md border px-2 py-1 text-[10px]" onClick={()=>openAdd(step.id,'after')}>+ Inserisci dopo</button><button disabled={saving} className="rounded-md border px-2 py-1 text-[10px]" onClick={()=>openAdd(step.id,'before')}>+ Inserisci prima</button></div></div><span className={`self-center rounded-full px-2 py-1 text-[10px] font-bold ${step.status==='done'?'bg-emerald-50 text-emerald-700':step.status==='in_progress'?'bg-amber-50 text-amber-700':'bg-slate-100 text-slate-600'}`}>{step.is_not_applicable?'N/A':STATUS[step.status]||step.status}</span>{real&&<div className="flex items-center gap-1"><button title="Sposta sopra" disabled={saving||index===0} className="rounded-lg border px-2 py-1 text-[10px] disabled:opacity-30" onClick={()=>moveStep(index,-1)}>↑</button><button title="Sposta sotto" disabled={saving||index===rows.length-1} className="rounded-lg border px-2 py-1 text-[10px] disabled:opacity-30" onClick={()=>moveStep(index,1)}>↓</button><button disabled={saving} className="rounded-lg border px-2 py-1 text-[10px]" onClick={()=>setEditing({...step})}>Modifica</button><button disabled={saving} className="rounded-lg border px-2 py-1 text-[10px]" onClick={()=>patch(step.id,{is_not_applicable:!step.is_not_applicable})}>{step.is_not_applicable?'Riattiva':'N/A'}</button></div>}</div>)}</div>
- {message&&<div className="mt-3 text-xs text-slate-500">{message}</div>}
- {adding&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/30 p-4"><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"><h3 className="text-base font-semibold">{insertAnchor?'Inserisci nuova fase':'Nuova fase'}</h3>{insertAnchor&&<p className="mt-1 text-xs text-slate-500">La nuova fase verrà inserita {insertPosition==='before'?'prima':'dopo'} la fase selezionata.</p>}<div className="mt-4 space-y-3"><label className="block text-xs font-medium">Nome<input autoFocus className="mt-1 w-full rounded-lg border p-2 text-sm" value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="es. PTO inviato a Terna"/></label><label className="block text-xs font-medium">Tipo<select className="mt-1 w-full rounded-lg border p-2 text-sm" value={newType} onChange={e=>setNewType(e.target.value)}>{Object.entries(TYPE).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label className="block text-xs font-medium">Responsabile<select className="mt-1 w-full rounded-lg border p-2 text-sm" value={newResponsible} onChange={e=>setNewResponsible(e.target.value||'')}><option value="">Da assegnare</option>{members.map(m=><option key={m.id} value={m.id}>{m.display_name}</option>)}</select></label><label className="block text-xs font-medium">Scadenza<input type="date" className="mt-1 w-full rounded-lg border p-2 text-sm" value={newDueDate} onChange={e=>setNewDueDate(e.target.value)}/></label><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={newOptional} onChange={e=>setNewOptional(e.target.checked)}/> Fase opzionale</label><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={newConfirmation} onChange={e=>setNewConfirmation(e.target.checked)}/> Richiede conferma / validazione Terna</label></div><div className="mt-5 flex justify-end gap-2"><button className="rounded-lg border px-3 py-2 text-xs" onClick={resetAdd}>Annulla</button><button disabled={saving} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50" onClick={addStep}>{saving?'Creazione…':'Aggiungi'}</button></div></div></div>}
- {editing&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/30 p-4"><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"><h3 className="text-base font-semibold">Modifica fase</h3><div className="mt-4 space-y-3"><label className="block text-xs font-medium">Nome<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={editing.title||''} onChange={e=>setEditing({...editing,title:e.target.value})}/></label><label className="block text-xs font-medium">Tipo<select className="mt-1 w-full rounded-lg border p-2 text-sm" value={editing.step_type||'custom'} onChange={e=>setEditing({...editing,step_type:e.target.value})}>{Object.entries(TYPE).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label className="block text-xs font-medium">Responsabile<select className="mt-1 w-full rounded-lg border p-2 text-sm" value={editing.responsible_id||''} onChange={e=>setEditing({...editing,responsible_id:e.target.value||null})}><option value="">Da assegnare</option>{members.map(m=><option key={m.id} value={m.id}>{m.display_name}</option>)}</select></label><label className="block text-xs font-medium">Stato<select className="mt-1 w-full rounded-lg border p-2 text-sm" value={editing.status||'pending'} onChange={e=>setEditing({...editing,status:e.target.value})}>{Object.entries(STATUS).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label className="block text-xs font-medium">Scadenza<input type="date" className="mt-1 w-full rounded-lg border p-2 text-sm" value={editing.due_date||''} onChange={e=>setEditing({...editing,due_date:e.target.value||null})}/></label><label className="block text-xs font-medium">Blocco / nota operativa<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={editing.blocker_reason||''} onChange={e=>setEditing({...editing,blocker_reason:e.target.value||null})}/></label><label className="block text-xs font-medium">Conferma Terna<select className="mt-1 w-full rounded-lg border p-2 text-sm" value={editing.confirmation_status||'not_required'} onChange={e=>setEditing({...editing,confirmation_status:e.target.value})}>{Object.entries(CONF).map(([v,l])=><option key={v} value={v}>{l||'Non richiesta'}</option>)}</select></label></div><div className="mt-5 flex justify-end gap-2"><button className="rounded-lg border px-3 py-2 text-xs" onClick={()=>setEditing(null)}>Annulla</button><button disabled={saving} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50" onClick={()=>patch(editing.id,{title:editing.title,step_type:editing.step_type,responsible_id:editing.responsible_id||null,status:editing.status,due_date:editing.due_date||null,blocker_reason:editing.blocker_reason||null,confirmation_status:editing.confirmation_status||'not_required'})}>{saving?'Salvataggio…':'Salva'}</button></div></div></div>}
- </section>
+
+const STATUS = { pending: 'Da avviare', in_progress: 'In corso', done: 'Completato' };
+const TYPE = { milestone: 'Milestone', deadline: 'Scadenza', document: 'Documento', approval: 'Approvazione', technical: 'Tecnica', authority: 'Ente / parere', custom: 'Personalizzata' };
+const CONF = { not_required: '', waiting: 'In attesa Terna', confirmed: 'Confermato da Terna', validated: 'Validato da Terna', rejected: 'Respinto / da verificare' };
+
+const TEMPLATES = {
+  standard: { label: 'Connessione standard', items: [['Richiesta connessione', 'milestone', false], ['Invio documenti', 'document', false], ['PTO / STMG ricevuto', 'document', false], ['PTO inviato a Terna — attesa conferma', 'document', true], ['PTO accettato', 'approval', false], ['Avvio iter autorizzativo', 'milestone', false], ['Accettazione / chiusura connessione', 'approval', false]] },
+  integrazioni: { label: 'Connessione con integrazioni', items: [['Richiesta connessione', 'milestone', false], ['Invio documenti', 'document', false], ['Richiesta integrazione', 'authority', false], ['Invio integrazione', 'document', false], ['PTO / STMG ricevuto', 'document', false], ['PTO inviato a Terna — attesa conferma', 'document', true], ['PTO accettato', 'approval', false], ['Avvio iter autorizzativo', 'milestone', false]] },
+  proroga: { label: 'Proroga / variazione', items: [['Richiesta proroga', 'authority', true], ['Istruttoria proroga', 'technical', false], ['Proroga concessa', 'approval', true], ['Nuova scadenza operativa', 'deadline', false], ['Proroga inizio lavori — attesa conferma Terna', 'deadline', true]] },
+  autorizzativo: { label: 'Iter autorizzativo complesso', items: [['Avvio iter autorizzativo', 'milestone', false], ['Richiesta parere ente', 'authority', true], ['Invio integrazioni', 'document', false], ['Conferenza / tavolo tecnico', 'technical', false], ['Parere favorevole', 'approval', false], ['Prescrizioni da recepire', 'authority', true], ['Provvedimento autorizzativo', 'approval', true]] },
+};
+
+const DEMO = [
+  { id: 'demo-1', title: 'Richiesta connessione', status: 'done', sort_order: 1, step_type: 'milestone' },
+  { id: 'demo-2', title: 'PTO ricevuto', status: 'in_progress', sort_order: 2, step_type: 'document' },
+  { id: 'demo-3', title: 'PTO inviato — attesa conferma Terna', status: 'in_progress', sort_order: 3, step_type: 'document', confirmation_required: true, confirmation_status: 'waiting' },
+];
+
+export default function ViscontiConnectionWorkflowBuilder({ practice, steps = [], members = [] }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [insertAnchor, setInsertAnchor] = useState(null);
+  const [insertPosition, setInsertPosition] = useState('after');
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState('custom');
+  const [newOptional, setNewOptional] = useState(false);
+  const [newConfirmation, setNewConfirmation] = useState(false);
+  const [newResponsible, setNewResponsible] = useState('');
+  const [newDueDate, setNewDueDate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const rows = useMemo(() => steps?.length ? [...steps].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : DEMO, [steps]);
+  const real = Boolean(practice?.id);
+
+  async function request(url, options) {
+    const res = await fetch(url, options);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'Operazione fallita');
+    return json;
+  }
+
+  async function patch(id, payload) {
+    setSaving(true); setMessage('');
+    try {
+      await request('/api/visconti-work/connection/update', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'step', id, ...payload }) });
+      setEditing(null); setMessage('Modifica salvata'); router.refresh();
+    } catch (e) { setMessage(e.message); } finally { setSaving(false); }
+  }
+
+  function openAdd(anchor = null, position = 'after') {
+    setInsertAnchor(anchor); setInsertPosition(position); setAdding(true); setMessage('');
+  }
+
+  function resetAdd() {
+    setAdding(false); setInsertAnchor(null); setInsertPosition('after'); setNewTitle(''); setNewType('custom'); setNewOptional(false); setNewConfirmation(false); setNewResponsible(''); setNewDueDate('');
+  }
+
+  async function addStep() {
+    if (!real) return;
+    if (!newTitle.trim()) return setMessage('Inserisci il nome della fase');
+    setSaving(true); setMessage('');
+    try {
+      await request('/api/visconti-work/connection/steps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ practice_id: practice.id, title: newTitle.trim(), step_type: newType, is_optional: newOptional, responsible_id: newResponsible || null, due_date: newDueDate || null, confirmation_required: newConfirmation, confirmation_status: newConfirmation ? 'waiting' : 'not_required', position: insertAnchor ? insertPosition : 'after_end', anchor_id: insertAnchor || null }) });
+      resetAdd(); setMessage('Fase aggiunta'); router.refresh();
+    } catch (e) { setMessage(e.message); } finally { setSaving(false); }
+  }
+
+  async function applyTemplate(key) {
+    if (!real) return;
+    const template = TEMPLATES[key];
+    if (rows.length && !window.confirm(`Aggiungere il modello “${template.label}” alle fasi esistenti?`)) return;
+    setSaving(true); setMessage('');
+    try {
+      for (const [title, step_type, confirmation_required] of template.items) {
+        await request('/api/visconti-work/connection/steps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ practice_id: practice.id, title, step_type, is_optional: false, confirmation_required, confirmation_status: confirmation_required ? 'waiting' : 'not_required', position: 'after_end' }) });
+      }
+      setMessage(`Modello “${template.label}” applicato`); router.refresh();
+    } catch (e) { setMessage(e.message); } finally { setSaving(false); }
+  }
+
+  async function moveStep(index, direction) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= rows.length || !real) return;
+    const orderedIds = rows.map((row, i) => i === index ? rows[targetIndex].id : i === targetIndex ? rows[index].id : row.id);
+    setSaving(true); setMessage('');
+    try {
+      await request('/api/visconti-work/connection/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ practice_id: practice.id, ordered_ids: orderedIds }) });
+      setMessage('Ordine aggiornato'); router.refresh();
+    } catch (e) { setMessage(e.message); } finally { setSaving(false); }
+  }
+
+  function confirmationActions(step) {
+    if (!step.confirmation_required) return null;
+    const state = step.confirmation_status || 'waiting';
+    return <div className={`gv-confirmation gv-confirmation-${state}`}>
+      <span className="gv-confirmation-label">Terna: {CONF[state] || 'In attesa Terna'}</span>
+      <div className="gv-confirmation-actions">
+        {state !== 'confirmed' && <button disabled={saving} onClick={() => patch(step.id, { confirmation_status: 'confirmed' })}>✓ Confermato</button>}
+        {state !== 'validated' && <button disabled={saving} onClick={() => patch(step.id, { confirmation_status: 'validated' })}>✓ Validato</button>}
+        {state !== 'rejected' && <button disabled={saving} className="gv-danger" onClick={() => patch(step.id, { confirmation_status: 'rejected' })}>Respinto</button>}
+      </div>
+    </div>;
+  }
+
+  return <section className="gv-workflow-builder">
+    <div className="gv-workflow-head">
+      <div>
+        <div className="gv-workflow-kicker">ITER DELLA PRATICA</div>
+        <h2>Workflow di connessione</h2>
+        <p>Qui si vede, in ordine, cosa deve succedere per portare avanti la pratica. Le fasi Terna restano in attesa finché non vengono realmente confermate o validate.</p>
+      </div>
+      <div className="gv-workflow-actions">
+        <select disabled={!real || saving} defaultValue="" onChange={e => { if (e.target.value) applyTemplate(e.target.value); e.target.value = ''; }} aria-label="Applica modello workflow">
+          <option value="">Applica modello…</option>
+          {Object.entries(TEMPLATES).map(([key, template]) => <option key={key} value={key}>{template.label}</option>)}
+        </select>
+        <button className="gv-primary" disabled={!real || saving} onClick={() => openAdd()}>+ Aggiungi fase</button>
+      </div>
+    </div>
+
+    <div className="gv-workflow-summary">
+      <div><strong>{rows.length}</strong><span>fasi</span></div>
+      <div><strong>{rows.filter(r => r.status === 'done').length}</strong><span>completate</span></div>
+      <div><strong>{rows.filter(r => r.status === 'in_progress').length}</strong><span>in corso</span></div>
+      <div><strong>{rows.filter(r => r.confirmation_required && (r.confirmation_status || 'waiting') === 'waiting').length}</strong><span>in attesa Terna</span></div>
+    </div>
+
+    <div className="gv-workflow-list">
+      {rows.map((step, index) => {
+        const status = step.is_not_applicable ? 'N/A' : (STATUS[step.status] || step.status || 'Da avviare');
+        const statusClass = step.is_not_applicable ? 'na' : step.status === 'done' ? 'done' : step.status === 'in_progress' ? 'progress' : 'pending';
+        return <article key={step.id || index} className={`gv-workflow-step ${step.is_not_applicable ? 'is-na' : ''}`}>
+          <div className="gv-step-index">{index + 1}</div>
+          <div className="gv-step-main">
+            <div className="gv-step-title-row">
+              <h3>{step.title || step.phase || 'Passaggio'}</h3>
+              <span className="gv-type">{TYPE[step.step_type] || step.step_type || 'Fase'}</span>
+              {step.is_optional && <span className="gv-optional">OPZIONALE</span>}
+            </div>
+            <div className="gv-step-meta">
+              <span><b>Responsabile</b> {step.responsible_name || 'Da assegnare'}</span>
+              <span><b>Scadenza</b> {step.due_date || '—'}</span>
+              {step.blocker_reason && <span className="gv-blocker"><b>Blocco</b> {step.blocker_reason}</span>}
+            </div>
+            {confirmationActions(step)}
+            {real && <div className="gv-step-actions">
+              <button disabled={saving || index === 0} onClick={() => moveStep(index, -1)} title="Sposta sopra">↑</button>
+              <button disabled={saving || index === rows.length - 1} onClick={() => moveStep(index, 1)} title="Sposta sotto">↓</button>
+              <button disabled={saving} onClick={() => setEditing({ ...step })}>Modifica</button>
+              <button disabled={saving} onClick={() => patch(step.id, { is_not_applicable: !step.is_not_applicable })}>{step.is_not_applicable ? 'Riattiva' : 'N/A'}</button>
+              <span className="gv-insert-menu">
+                <button disabled={saving} onClick={() => openAdd(step.id, 'before')}>+ Prima</button>
+                <button disabled={saving} onClick={() => openAdd(step.id, 'after')}>+ Dopo</button>
+              </span>
+            </div>}
+          </div>
+          <div className={`gv-step-status ${statusClass}`}>{status}</div>
+        </article>;
+      })}
+    </div>
+
+    {message && <div className="gv-workflow-message">{message}</div>}
+
+    {adding && <div className="gv-modal-backdrop"><div className="gv-modal"><div className="gv-modal-head"><div><span className="gv-workflow-kicker">NUOVA FASE</span><h3>{insertAnchor ? 'Inserisci una fase' : 'Aggiungi una fase'}</h3>{insertAnchor && <p>La nuova fase verrà inserita {insertPosition === 'before' ? 'prima' : 'dopo'} della fase selezionata.</p>}</div><button onClick={resetAdd}>×</button></div><div className="gv-form-grid"><label>Nome<input autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="es. PTO inviato a Terna" /></label><label>Tipo<select value={newType} onChange={e => setNewType(e.target.value)}>{Object.entries(TYPE).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Responsabile<select value={newResponsible} onChange={e => setNewResponsible(e.target.value || '')}><option value="">Da assegnare</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></label><label>Scadenza<input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} /></label></div><div className="gv-checks"><label><input type="checkbox" checked={newOptional} onChange={e => setNewOptional(e.target.checked)} /> Fase opzionale</label><label><input type="checkbox" checked={newConfirmation} onChange={e => setNewConfirmation(e.target.checked)} /> Richiede conferma / validazione Terna</label></div><div className="gv-modal-footer"><button onClick={resetAdd}>Annulla</button><button className="gv-primary" disabled={saving} onClick={addStep}>{saving ? 'Creazione…' : 'Aggiungi fase'}</button></div></div></div>}
+
+    {editing && <div className="gv-modal-backdrop"><div className="gv-modal"><div className="gv-modal-head"><div><span className="gv-workflow-kicker">MODIFICA</span><h3>Modifica fase</h3></div><button onClick={() => setEditing(null)}>×</button></div><div className="gv-form-grid"><label>Nome<input value={editing.title || ''} onChange={e => setEditing({ ...editing, title: e.target.value })} /></label><label>Tipo<select value={editing.step_type || 'custom'} onChange={e => setEditing({ ...editing, step_type: e.target.value })}>{Object.entries(TYPE).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Responsabile<select value={editing.responsible_id || ''} onChange={e => setEditing({ ...editing, responsible_id: e.target.value || null })}><option value="">Da assegnare</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></label><label>Stato<select value={editing.status || 'pending'} onChange={e => setEditing({ ...editing, status: e.target.value })}>{Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Scadenza<input type="date" value={editing.due_date || ''} onChange={e => setEditing({ ...editing, due_date: e.target.value || null })} /></label><label className="gv-full">Blocco / nota operativa<input value={editing.blocker_reason || ''} onChange={e => setEditing({ ...editing, blocker_reason: e.target.value })} /></label></div><div className="gv-modal-footer"><button onClick={() => setEditing(null)}>Annulla</button><button className="gv-primary" disabled={saving} onClick={() => patch(editing.id, { title: editing.title, step_type: editing.step_type, responsible_id: editing.responsible_id, status: editing.status, due_date: editing.due_date, blocker_reason: editing.blocker_reason })}>{saving ? 'Salvataggio…' : 'Salva modifiche'}</button></div></div></div>}
+  </section>;
 }
