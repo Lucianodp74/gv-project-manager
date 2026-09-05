@@ -1,6 +1,7 @@
 import ViscontiTaskBoardV2 from "@/components/ViscontiTaskBoardV2";
 import ViscontiRequestTracking from "@/components/ViscontiRequestTracking";
 import ViscontiTeamMembersPanel from "@/components/ViscontiTeamMembersPanel";
+import ViscontiTaskQuickAssignment from "@/components/ViscontiTaskQuickAssignment";
 import { getViscontiTaskData } from "@/lib/visconti-task-data";
 
 export const dynamic = "force-dynamic";
@@ -13,5 +14,5 @@ export const metadata = {
 
 export default async function TasksPage() {
   const data = await getViscontiTaskData();
-  return <><ViscontiTaskBoardV2 {...data} /><ViscontiRequestTracking tasks={data.tasks || []} /><div style={{maxWidth:1440,margin:"0 auto",padding:"0 34px 40px"}}><ViscontiTeamMembersPanel members={data.members || []} /></div></>;
+  return <><ViscontiTaskBoardV2 {...data} /><ViscontiTaskQuickAssignment tasks={data.tasks || []} members={data.members || []} /><ViscontiRequestTracking tasks={data.tasks || []} /><div style={{maxWidth:1440,margin:"0 auto",padding:"0 34px 40px"}}><ViscontiTeamMembersPanel members={data.members || []} /></div></>;
 }
