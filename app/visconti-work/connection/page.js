@@ -1,7 +1,7 @@
 import ViscontiConnectionDetailV2 from "@/components/ViscontiConnectionDetailV2";
 import ViscontiConnectionControlTower from "@/components/ViscontiConnectionControlTower";
 import ViscontiConnectionMilestoneEditor from "@/components/ViscontiConnectionMilestoneEditor";
-import ViscontiConnectionWorkflowBuilder from "@/components/ViscontiConnectionWorkflowBuilder";
+import ViscontiConnectionWorkflowGuard from "@/components/ViscontiConnectionWorkflowGuard";
 import ViscontiTeamMembersPanel from "@/components/ViscontiTeamMembersPanel";
 import ViscontiConnectionListV2 from "@/components/ViscontiConnectionListV2";
 import connectionStyles from "./connection-overrides.module.css";
@@ -23,7 +23,7 @@ export default async function ConnectionPage({ searchParams }) {
     <ViscontiConnectionControlTower data={data.controlTower} />
     <ViscontiConnectionMilestoneEditor practice={data.practice} />
     <ViscontiTeamMembersPanel members={data.members} />
-    <ViscontiConnectionWorkflowBuilder practice={data.practice} steps={data.steps} members={data.members} />
+    <ViscontiConnectionWorkflowGuard practice={data.practice} steps={data.steps} members={data.members} />
     <ViscontiConnectionDetailV2 practice={data.practice} deadlines={data.deadlines} steps={data.steps} />
   </div>;
 }
