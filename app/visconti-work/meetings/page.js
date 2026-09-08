@@ -1,5 +1,5 @@
 import ViscontiWeeklyMeetingV4 from "@/components/ViscontiWeeklyMeetingV4";
-import ViscontiWeeklyMeetingResponsibilities from "@/components/ViscontiWeeklyMeetingResponsibilities";
+import ViscontiWeeklyResponsibilityBoardV2 from "@/components/ViscontiWeeklyResponsibilityBoardV2";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 import { getViscontiTaskData } from "@/lib/visconti-task-data";
 
@@ -9,10 +9,12 @@ export const revalidate = 0;
 export const metadata = { title: "Riunione settimanale · Visconti Work V2", description: "Piano operativo settimanale, controllo collaboratori e verifica del lunedì" };
 
 export default async function MeetingsPage(){
-  const [workData, taskData] = await Promise.all([getViscontiWorkData(), getViscontiTaskData()]);
+  const [workResult, taskResult] = await Promise.allSettled([getViscontiWorkData(), getViscontiTaskData()]);
+  const workData = workResult.status === "fulfilled" ? workResult.value : {};
+  const taskData = taskResult.status === "fulfilled" ? taskResult.value : {};
   const data = { ...workData, tasks: taskData.tasks || [], members: taskData.members?.length ? taskData.members : workData.members || [] };
   return <>
-    <ViscontiWeeklyMeetingResponsibilities members={data.members}/>
+    <ViscontiWeeklyResponsibilityBoardV2 tasks={data.tasks} members={data.members}/>
     <ViscontiWeeklyMeetingV4 data={data}/>
   </>;
 }
