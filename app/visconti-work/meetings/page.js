@@ -1,5 +1,6 @@
 import ViscontiWeeklyMeetingV4 from "@/components/ViscontiWeeklyMeetingV4";
 import ViscontiWeeklyResponsibilityBoardV2 from "@/components/ViscontiWeeklyResponsibilityBoardV2";
+import ViscontiWeeklyTaskAssignment from "@/components/ViscontiWeeklyTaskAssignment";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 import { getViscontiTaskData } from "@/lib/visconti-task-data";
 
@@ -15,6 +16,7 @@ export default async function MeetingsPage(){
   const data = { ...workData, tasks: taskData.tasks || [], members: taskData.members?.length ? taskData.members : workData.members || [] };
   return <>
     <ViscontiWeeklyResponsibilityBoardV2 tasks={data.tasks} members={data.members}/>
+    <ViscontiWeeklyTaskAssignment members={data.members} projects={data.projects || []}/>
     <ViscontiWeeklyMeetingV4 data={data}/>
   </>;
 }
