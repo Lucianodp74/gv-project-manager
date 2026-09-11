@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const labels = { accepted: "ACCETTATA", authorization_iter: "ITER AVVIATO", pto_accepted: "PTO ACCETTATO", pto_received: "PTO RICEVUTO", request_sent: "RICHIESTA INVIATA", not_started: "DA AVVIARE" };
-function fmt(v) { return v ? new Date(`${v}T00:00:00`).toLocaleDateString("it-IT") : "—"; }
+function fmt(v) { return v ? new Date(`${String(v).slice(0,10)}T00:00:00`).toLocaleDateString("it-IT") : "—"; }
 function Badge({ children, tone = "normal" }) { return <span className={`cd-badge cd-${tone}`}>{children}</span>; }
 function nextAction(row, waiting, rejected) {
   if (rejected > 0) return "Verificare il riscontro esterno respinto e aggiornare la fase.";
