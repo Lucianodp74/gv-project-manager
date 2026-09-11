@@ -57,15 +57,16 @@ export default function ViscontiProjectTypeDecorator({ projects = [] }) {
         const projectMw = Number(project.power_mw || 0);
         const mwCell = row.children[2];
         if (!mwCell || requested == null) return;
-        if (mwCell.querySelector(".gv-mw-compare")) return;
-        const delta = projectMw - requested;
-        const deltaLabel = Math.abs(delta) < 0.001 ? "0 MW" : `${delta > 0 ? "+" : ""}${delta.toFixed(2).replace(/\.00$/, "")} MW`;
-        mwCell.innerHTML = `<div class="gv-mw-compare"><b>${projectMw} MW progetto</b><span>Richiesta connessione: ${requested} MW</span><strong>Δ progetto − richiesta: ${deltaLabel}</strong></div>`;
+        const existing = mwCell.querySelector(".gv-mw-compare");
+        const container = existing || document.createElement("div");
+        container.className = "gv-mw-compare";
+        container.innerHTML = `<b>${projectMw} MW progetto</b><span>Richiesta connessione: ${requested} MW</span>`;
+        if (!existing) mwCell.replaceChildren(container);
       });
     };
 
     const style = document.createElement("style");
-    style.textContent = `:root{--gv-type-pv:#d7ad1b;--gv-type-wind:#4285c5;--gv-type-bess:#8a63c7;--gv-type-agri:#4b9a58;--gv-type-hybrid:#d47c2b}.gv-type-chip{display:inline-flex;align-items:center;gap:4px;margin-top:5px;margin-right:5px;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:850;white-space:nowrap}.gv-type-pv{background:#fff5cf;color:#8b6800}.gv-type-wind{background:#e7f2ff;color:#2165a8}.gv-type-bess{background:#f0e9ff;color:#6842a8}.gv-type-agri{background:#e7f6e9;color:#28753a}.gv-type-hybrid{background:#fff0df;color:#a85a16}.gv-mw-compare{display:flex;flex-direction:column;gap:3px;line-height:1.25;white-space:nowrap}.gv-mw-compare b{font-size:11px}.gv-mw-compare span{font-size:9px;color:#737c8c}.gv-mw-compare strong{font-size:9px;color:#b43a34}`;
+    style.textContent = `:root{--gv-type-pv:#d7ad1b;--gv-type-wind:#4285c5;--gv-type-bess:#8a63c7;--gv-type-agri:#4b9a58;--gv-type-hybrid:#d47c2b}.gv-type-chip{display:inline-flex;align-items:center;gap:4px;margin-top:5px;margin-right:5px;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:850;white-space:nowrap}.gv-type-pv{background:#fff5cf;color:#8b6800}.gv-type-wind{background:#e7f2ff;color:#2165a8}.gv-type-bess{background:#f0e9ff;color:#6842a8}.gv-type-agri{background:#e7f6e9;color:#28753a}.gv-type-hybrid{background:#fff0df;color:#a85a16}.gv-mw-compare{display:flex;flex-direction:column;gap:3px;line-height:1.25;white-space:nowrap}.gv-mw-compare b{font-size:11px}.gv-mw-compare span{font-size:9px;color:#737c8c}`;
     document.head.appendChild(style);
     apply();
     loadConnectionMw();
