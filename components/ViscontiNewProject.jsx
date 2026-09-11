@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 
-const initialForm = { name: "", project_code: "", region: "", power_mw: "", notes: "", responsible_id: "", requires_spv: false };
+const initialForm = { name: "", project_code: "", region: "", power_mw: "", notes: "", responsible_id: "", project_type: "fotovoltaico", requires_spv: false };
+const PROJECT_TYPES = [
+  ["fotovoltaico", "Fotovoltaico"],
+  ["eolico", "Eolico"],
+  ["bess", "BESS"],
+  ["agrivoltaico", "Agrivoltaico"],
+  ["ibrido", "Ibrido"],
+];
 
 export default function ViscontiNewProject({ members = [] }) {
   const [open, setOpen] = useState(false);
@@ -13,6 +20,7 @@ export default function ViscontiNewProject({ members = [] }) {
   async function submit(event) {
     event.preventDefault(); setError("");
     if (!form.name.trim()) { setError("Inserisci il nome del progetto."); return; }
+    if (!form.project_type) { setError("Seleziona la tipologia del progetto."); return; }
     setSaving(true);
     try {
       const response = await fetch("/api/visconti-projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, name: form.name.trim(), project_code: form.project_code.trim(), region: form.region.trim(), notes: form.notes.trim(), power_mw: form.power_mw === "" ? null : Number(form.power_mw) }) });
@@ -33,6 +41,7 @@ export default function ViscontiNewProject({ members = [] }) {
           <label className="np-field"><span className="np-label">Codice progetto</span><input className="np-input" value={form.project_code} onChange={(e) => change("project_code", e.target.value)} placeholder="Es. H028" /></label>
           <label className="np-field"><span className="np-label">Regione / località</span><input className="np-input" value={form.region} onChange={(e) => change("region", e.target.value)} placeholder="Es. Puglia · Bari" /></label>
           <label className="np-field"><span className="np-label">Potenza MW</span><input className="np-input" type="number" min="0" step="0.01" value={form.power_mw} onChange={(e) => change("power_mw", e.target.value)} placeholder="0" /></label>
+          <label className="np-field"><span className="np-label">Tipologia progetto *</span><select className="np-select" value={form.project_type} onChange={(e) => change("project_type", e.target.value)}><option value="">Seleziona tipologia</option>{PROJECT_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label className="np-field"><span className="np-label">Responsabile</span><select className="np-select" value={form.responsible_id} onChange={(e) => change("responsible_id", e.target.value)}><option value="">Non assegnato</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select></label>
           <div className="np-field full"><span className="np-label">Gestione societaria</span><label className={`np-mode ${direct ? "active" : ""}`}><input type="radio" name="spv" checked={direct} onChange={() => change("requires_spv", false)} /><div><b>Gruppo Visconti S.r.l. — presentazione diretta</b><span>Titolare/presentatore: Gruppo Visconti S.r.l. · nessuna nuova SPV · nessuna PEC da aprire · nessuna voltura.</span></div></label><label className={`np-mode ${form.requires_spv ? "active" : ""}`}><input type="radio" name="spv" checked={form.requires_spv} onChange={() => change("requires_spv", true)} /><div><b>Nuova SPV — costituzione e voltura</b><span>Attiva il percorso GO → costituzione SPV → P.IVA/PEC → voltura della connessione.</span></div></label></div>
           <label className="np-field full"><span className="np-label">Note</span><textarea className="np-textarea" value={form.notes} onChange={(e) => change("notes", e.target.value)} placeholder="Informazioni iniziali utili al progetto…" /></label>
