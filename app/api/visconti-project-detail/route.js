@@ -1,3 +1,5 @@
+import { revalidatePath } from "next/cache";
+
 const SUPABASE_URL = "https://jyinddvvcnlxesikeggp.supabase.co";
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_ybmz6MfUEIo-gfwB_sqyVQ_wWuFdhUV";
 
@@ -39,10 +41,12 @@ export async function PATCH(request) {
       if (!Number.isFinite(power) || power < 0) return Response.json({ error: "Potenza non valida." }, { status: 400 });
       if (connectionId) {
         const data = await supabase(`connection_practices?id=eq.${encodeURIComponent(connectionId)}&select=*`, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ power_mw: power, updated_at: new Date().toISOString() }) });
+        revalidatePath("/visconti-work/projects");
         return Response.json({ ok: true, connection: data?.[0] || null });
       }
       if (!projectId) return Response.json({ error: "Manca l'identificativo del progetto." }, { status: 400 });
       const data = await supabase(`projects?id=eq.${encodeURIComponent(projectId)}&select=*`, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ power_mw: power, updated_at: new Date().toISOString() }) });
+      revalidatePath("/visconti-work/projects");
       return Response.json({ ok: true, project: data?.[0] || null });
     }
     const status = body?.status;
@@ -53,6 +57,7 @@ export async function PATCH(request) {
     if (status === "archived") payload.archived_from_status = body?.archivedFromStatus || "connection";
     else payload.archived_from_status = null;
     const data = await supabase(`projects?id=eq.${encodeURIComponent(projectId)}&select=*`, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify(payload) });
+    revalidatePath("/visconti-work/projects");
     return Response.json({ ok: true, project: data?.[0] || null });
   } catch (error) {
     return Response.json({ error: error.message || "Aggiornamento progetto non riuscito." }, { status: 500 });
