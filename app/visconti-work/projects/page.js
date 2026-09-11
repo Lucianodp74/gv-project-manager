@@ -3,6 +3,7 @@ import ViscontiProjectCompanyCard from "@/components/ViscontiProjectCompanyCard"
 import ViscontiProjectDetailV2 from "@/components/ViscontiProjectDetailV2";
 import ViscontiProjectListV2 from "@/components/ViscontiProjectListV2";
 import ViscontiProjectSocietaryWorkflow from "@/components/ViscontiProjectSocietaryWorkflow";
+import ViscontiProjectTypeDecorator from "@/components/ViscontiProjectTypeDecorator";
 import ViscontiNewProject from "@/components/ViscontiNewProject";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 
@@ -20,5 +21,5 @@ export default async function ProjectPage({ searchParams }) {
     return <><ViscontiProjectActionFrame projectId={params.id} /><ViscontiProjectCompanyCard projectId={params.id} /><ViscontiProjectSocietaryWorkflow projectId={params.id} /><ViscontiProjectDetailV2 /></>;
   }
   const data = await getViscontiWorkData({ includeArchived: true });
-  return <><div style={{maxWidth:1480,margin:"0 auto",padding:"18px 34px 0",display:"flex",justifyContent:"flex-end"}}><ViscontiNewProject members={data.members} /></div><ViscontiProjectListV2 projects={data.projects} connected={data.connected} /> </>;
+  return <><div style={{maxWidth:1480,margin:"0 auto",padding:"18px 34px 0",display:"flex",justifyContent:"flex-end"}}><ViscontiNewProject members={data.members} /></div><ViscontiProjectTypeDecorator projects={data.projects || []} /><ViscontiProjectListV2 projects={data.projects} connected={data.connected} /> </>;
 }
