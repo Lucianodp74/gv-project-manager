@@ -33,6 +33,18 @@ export async function PATCH(request) {
   try {
     const body = await request.json();
     const projectId = String(body?.projectId || "");
+    const connectionId = String(body?.connectionId || "");
+    if (body?.power_mw !== undefined) {
+      const power = Number(body.power_mw);
+      if (!Number.isFinite(power) || power < 0) return Response.json({ error: "Potenza non valida." }, { status: 400 });
+      if (connectionId) {
+        const data = await supabase(`connection_practices?id=eq.${encodeURIComponent(connectionId)}&select=*`, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ power_mw: power, updated_at: new Date().toISOString() }) });
+        return Response.json({ ok: true, connection: data?.[0] || null });
+      }
+      if (!projectId) return Response.json({ error: "Manca l'identificativo del progetto." }, { status: 400 });
+      const data = await supabase(`projects?id=eq.${encodeURIComponent(projectId)}&select=*`, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ power_mw: power, updated_at: new Date().toISOString() }) });
+      return Response.json({ ok: true, project: data?.[0] || null });
+    }
     const status = body?.status;
     if (!projectId || !["archived", "active", "opportunity", "connection", "go_decision", "development", "presentation", "authorization", "commercial", "authorized", "closed"].includes(status)) {
       return Response.json({ error: "Parametri non validi" }, { status: 400 });
