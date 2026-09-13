@@ -36,6 +36,11 @@ export default function ViscontiConnectionWorkflowBuilder({ practice, steps = []
 
   const rows = useMemo(() => steps?.length ? [...steps].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : DEMO, [steps]);
   const real = Boolean(practice?.id);
+  const activeIndex = useMemo(() => rows.findIndex(step => !step.is_not_applicable && step.status !== 'done'), [rows]);
+  const activeStep = activeIndex >= 0 ? rows[activeIndex] : null;
+  const nextStep = activeIndex >= 0 ? rows.slice(activeIndex + 1).find(step => !step.is_not_applicable && step.status !== 'done') : null;
+  const activeConfirmation = activeStep?.confirmation_required ? (activeStep.confirmation_status || 'waiting') : 'not_required';
+  const activeBlocked = Boolean(activeStep?.blocker_reason) || activeConfirmation === 'waiting' || activeConfirmation === 'rejected';
 
   async function request(url, options) {
     const res = await fetch(url, options);
@@ -121,6 +126,27 @@ export default function ViscontiConnectionWorkflowBuilder({ practice, steps = []
         </select>
         <button className="gv-primary" disabled={!real || saving} onClick={() => openAdd()}>+ Aggiungi fase</button>
       </div>
+    </div>
+
+    <div className="gv-workflow-command">
+      <div className="gv-workflow-command-head">
+        <div>
+          <div className="gv-workflow-kicker">REGIA OPERATIVA</div>
+          <h3>{activeStep ? 'Cosa fare ora' : 'Connessione completata'}</h3>
+        </div>
+        {activeStep && <span className={`gv-step-status ${activeBlocked ? 'pending' : 'progress'}`}>{activeBlocked ? 'Attenzione' : 'Operativa'}</span>}
+      </div>
+      {activeStep ? <div className="gv-workflow-command-grid">
+        <div className="gv-workflow-command-primary">
+          <span className="gv-command-label">FASE CORRENTE</span>
+          <strong>{activeStep.title || activeStep.phase || 'Passaggio'}</strong>
+          <span>Responsabile: {activeStep.responsible_name || 'Da assegnare'}</span>
+        </div>
+        <div><span className="gv-command-label">SCADENZA</span><strong>{activeStep.due_date || 'Da definire'}</strong></div>
+        <div><span className="gv-command-label">STATO</span><strong>{activeConfirmation === 'waiting' ? 'Attesa conferma Terna' : activeConfirmation === 'rejected' ? 'Da verificare con Terna' : STATUS[activeStep.status] || activeStep.status || 'Da avviare'}</strong></div>
+        {activeStep.blocker_reason && <div className="gv-command-blocker"><span className="gv-command-label">BLOCCO</span><strong>{activeStep.blocker_reason}</strong></div>}
+      </div> : <div className="gv-workflow-command-complete">Tutte le fasi operative della pratica risultano completate.</div>}
+      {nextStep && <div className="gv-workflow-command-next"><span className="gv-command-label">PROSSIMA</span><strong>{nextStep.title || nextStep.phase || 'Passaggio'}</strong><span>{nextStep.due_date ? `Scadenza ${nextStep.due_date}` : 'Nessuna scadenza impostata'}</span></div>}
     </div>
 
     <div className="gv-workflow-summary">
