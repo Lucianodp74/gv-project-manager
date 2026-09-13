@@ -36,7 +36,11 @@ export default function ViscontiConnectionWorkflowBuilder({ practice, steps = []
 
   const rows = useMemo(() => steps?.length ? [...steps].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : DEMO, [steps]);
   const real = Boolean(practice?.id);
-  const activeIndex = useMemo(() => rows.findIndex(step => !step.is_not_applicable && step.status !== 'done'), [rows]);
+  const activeIndex = useMemo(() => {
+    const inProgressIndex = rows.findIndex(step => !step.is_not_applicable && step.status === 'in_progress');
+    if (inProgressIndex >= 0) return inProgressIndex;
+    return rows.findIndex(step => !step.is_not_applicable && step.status !== 'done');
+  }, [rows]);
   const activeStep = activeIndex >= 0 ? rows[activeIndex] : null;
   const nextStep = activeIndex >= 0 ? rows.slice(activeIndex + 1).find(step => !step.is_not_applicable && step.status !== 'done') : null;
   const activeConfirmation = activeStep?.confirmation_required ? (activeStep.confirmation_status || 'waiting') : 'not_required';
@@ -55,6 +59,12 @@ export default function ViscontiConnectionWorkflowBuilder({ practice, steps = []
       await request('/api/visconti-work/connection/update', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'step', id, ...payload }) });
       setEditing(null); setMessage('Modifica salvata'); router.refresh();
     } catch (e) { setMessage(e.message); } finally { setSaving(false); }
+  }
+
+  async function advanceActiveStep() {
+    if (!real || !activeStep || activeBlocked || !activeStep.id) return;
+    const nextStatus = activeStep.status === 'in_progress' ? 'done' : 'in_progress';
+    await patch(activeStep.id, { status: nextStatus });
   }
 
   function openAdd(anchor = null, position = 'after') {
@@ -146,6 +156,8 @@ export default function ViscontiConnectionWorkflowBuilder({ practice, steps = []
         <div><span className="gv-command-label">STATO</span><strong>{activeConfirmation === 'waiting' ? 'Attesa conferma Terna' : activeConfirmation === 'rejected' ? 'Da verificare con Terna' : STATUS[activeStep.status] || activeStep.status || 'Da avviare'}</strong></div>
         {activeStep.blocker_reason && <div className="gv-command-blocker"><span className="gv-command-label">BLOCCO</span><strong>{activeStep.blocker_reason}</strong></div>}
       </div> : <div className="gv-workflow-command-complete">Tutte le fasi operative della pratica risultano completate.</div>}
+      {activeStep && real && !activeBlocked && <div className="gv-workflow-command-action"><button className="gv-primary" disabled={saving} onClick={advanceActiveStep}>{saving ? 'Salvataggio…' : activeStep.status === 'in_progress' ? '✓ Segna fase completata' : '▶ Avvia fase'}</button></div>}
+      {activeStep && activeBlocked && <div className="gv-workflow-command-next"><span className="gv-command-label">AZIONE RICHIESTA</span><strong>{activeConfirmation === 'waiting' ? 'Attendere conferma Terna' : activeConfirmation === 'rejected' ? 'Verificare il passaggio con Terna' : 'Rimuovere il blocco operativo'}</strong></div>}
       {nextStep && <div className="gv-workflow-command-next"><span className="gv-command-label">PROSSIMA</span><strong>{nextStep.title || nextStep.phase || 'Passaggio'}</strong><span>{nextStep.due_date ? `Scadenza ${nextStep.due_date}` : 'Nessuna scadenza impostata'}</span></div>}
     </div>
 
