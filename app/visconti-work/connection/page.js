@@ -7,9 +7,6 @@ import ViscontiConnectionListV2 from "@/components/ViscontiConnectionListV2";
 import connectionStyles from "./connection-overrides.module.css";
 import { getViscontiConnectionData, getViscontiConnectionsData } from "@/lib/visconti-work-data";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 export const metadata = { title: "Connessioni · Visconti Work V2", description: "Gestione operativa delle pratiche di connessione — Gruppo Visconti" };
 
 export default async function ConnectionPage({ searchParams }) {
