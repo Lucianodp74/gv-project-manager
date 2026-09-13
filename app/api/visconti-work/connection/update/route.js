@@ -41,6 +41,22 @@ function headers(extra = {}) {
   return { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", ...extra };
 }
 
+async function ensureSequentialStep(practiceId, stepId, nextStatus) {
+  if (!practiceId || !["in_progress", "done"].includes(nextStatus)) return null;
+  const currentRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=id,sort_order,is_not_applicable,status&practice_id=eq.${encodeURIComponent(practiceId)}&id=eq.${encodeURIComponent(stepId)}&limit=1`, { headers: headers(), cache: "no-store" });
+  if (!currentRes.ok) throw new Error("Impossibile verificare l'ordine del workflow");
+  const currentRows = await currentRes.json();
+  if (!currentRows.length) return "Fase non trovata";
+  const current = currentRows[0];
+  if (current.is_not_applicable) return null;
+  const previousRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=id,title,sort_order,status,is_not_applicable&practice_id=eq.${encodeURIComponent(practiceId)}&sort_order=lt.${encodeURIComponent(current.sort_order ?? 0)}&order=sort_order.desc&limit=50`, { headers: headers(), cache: "no-store" });
+  if (!previousRes.ok) throw new Error("Impossibile verificare le fasi precedenti");
+  const previousRows = await previousRes.json();
+  const blocking = previousRows.find(row => !row.is_not_applicable && row.status !== "done");
+  if (blocking) return `Completa prima la fase precedente: ${blocking.title || `fase ${blocking.sort_order}`}`;
+  return null;
+}
+
 async function syncLinkedTask(stepId) {
   const stepRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=id,practice_id,title,notes,status,is_not_applicable,responsible_id,due_date,confirmation_required,confirmation_status,confirmation_notes,blocker_reason,task_required,task_id&id=eq.${encodeURIComponent(stepId)}&limit=1`, { headers: headers(), cache: "no-store" });
   if (!stepRes.ok) throw new Error("Impossibile leggere la fase aggiornata");
@@ -98,6 +114,14 @@ export async function PATCH(request) {
     const table = type === "practice" ? "connection_practices" : type === "step" ? "connection_workflow_builder" : "connection_deadlines";
     const payload = clean(body, type);
     if (!Object.keys(payload).length) return NextResponse.json({ error: "Nessun campo da aggiornare" }, { status: 400 });
+    if (type === "step" && payload.status && ["in_progress", "done"].includes(payload.status)) {
+      const practiceRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=practice_id&id=eq.${encodeURIComponent(id)}&limit=1`, { headers: headers(), cache: "no-store" });
+      if (!practiceRes.ok) return NextResponse.json({ error: "Impossibile verificare la pratica della fase" }, { status: 500 });
+      const practiceRows = await practiceRes.json();
+      if (!practiceRows.length) return NextResponse.json({ error: "Fase non trovata" }, { status: 404 });
+      const sequentialError = await ensureSequentialStep(practiceRows[0].practice_id, id, payload.status);
+      if (sequentialError) return NextResponse.json({ error: sequentialError }, { status: 409 });
+    }
     if (type === "step" && payload.status === "done" && !payload.completed_at) payload.completed_at = new Date().toISOString().slice(0, 10);
     if (type === "step" && payload.confirmation_status && payload.confirmation_status !== "waiting" && payload.confirmation_status !== "not_required" && !payload.confirmation_date) payload.confirmation_date = new Date().toISOString().slice(0, 10);
     if (type === "step" && payload.confirmation_status === "waiting") payload.confirmation_required = true;
