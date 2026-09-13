@@ -4,7 +4,7 @@ const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const allowed = {
-  practice: ["request_date", "pto_received_date", "pto_accepted_date", "pto_validated_date", "iter_start_date", "start_works_validated_date", "sharing_date", "acceptance_date", "next_deadline", "next_deadline_type", "authorization_status", "authorization_outcome", "notes", "responsible_id"],
+  practice: ["request_date", "pto_received_date", "pto_accepted_date", "pto_validated_date", "iter_start_date", "start_works_validated_date", "sharing_date", "acceptance_date", "next_deadline", "next_deadline_type", "authorization_status", "authorization_outcome", "voltage_level", "notes", "responsible_id"],
   step: ["title", "phase", "step_type", "is_optional", "is_not_applicable", "status", "responsible_id", "due_date", "started_date", "completed_at", "notes", "sort_order", "confirmation_required", "confirmation_status", "confirmation_date", "confirmation_document", "confirmation_notes", "blocker_reason", "task_required", "task_id"],
   deadline: ["status", "responsible_id", "due_date", "notes"],
 };
@@ -14,6 +14,7 @@ const enums = {
   confirmationStatus: new Set(["not_required", "waiting", "confirmed", "validated", "rejected"]),
   deadlineStatus: new Set(["open", "completed", "overdue", "cancelled"]),
   authorizationStatus: new Set(["not_started", "in_progress", "completed", "title_perfected", "suspended", "cancelled"]),
+  voltageLevel: new Set(["AT", "AAT"]),
 };
 
 const practiceAliases = {
@@ -48,42 +49,19 @@ async function syncLinkedTask(stepId) {
   const step = rows[0];
   const mustCreate = Boolean(step.task_required || step.responsible_id || step.due_date || step.confirmation_required || step.task_id);
   if (!mustCreate || step.is_not_applicable) return;
-
   const practiceRes = await fetch(`${URL}/rest/v1/connection_practices?select=project_id&id=eq.${encodeURIComponent(step.practice_id)}&limit=1`, { headers: headers(), cache: "no-store" });
   if (!practiceRes.ok) throw new Error("Impossibile leggere il progetto della pratica");
   const practices = await practiceRes.json();
   if (!practices.length) throw new Error("Pratica non trovata");
-
   const existingId = step.task_id;
-  const taskQuery = existingId
-    ? `?select=id&id=eq.${encodeURIComponent(existingId)}&limit=1`
-    : `?select=id&source_connection_step_id=eq.${encodeURIComponent(step.id)}&limit=1`;
+  const taskQuery = existingId ? `?select=id&id=eq.${encodeURIComponent(existingId)}&limit=1` : `?select=id&source_connection_step_id=eq.${encodeURIComponent(step.id)}&limit=1`;
   const existingRes = await fetch(`${URL}/rest/v1/visconti_task_board${taskQuery}`, { headers: headers(), cache: "no-store" });
   if (!existingRes.ok) throw new Error("Impossibile verificare l’attività collegata");
   const existing = await existingRes.json();
-
   const isWaiting = step.confirmation_status === "waiting";
   const isDone = step.status === "done";
-  const payload = {
-    title: step.title,
-    description: step.notes || null,
-    project_id: practices[0].project_id,
-    connection_practice_id: step.practice_id,
-    source_connection_step_id: step.id,
-    responsible_id: step.responsible_id || null,
-    due_date: step.due_date || null,
-    workflow_status: isDone ? "done" : step.status === "in_progress" ? "in_progress" : isWaiting ? "blocked" : "todo",
-    priority: isWaiting ? "high" : "normal",
-    category: "connection",
-    blocker_reason: isWaiting ? "In attesa di conferma esterna" : step.blocker_reason || null,
-    next_action: isDone ? null : isWaiting ? "Ottenere la conferma e registrare l’esito" : null,
-    notes: step.confirmation_notes || step.notes || null,
-    completed_at: isDone ? (step.completed_at || new Date().toISOString()) : null,
-  };
-
-  const url = existing.length
-    ? `${URL}/rest/v1/visconti_task_board?id=eq.${encodeURIComponent(existing[0].id)}`
-    : `${URL}/rest/v1/visconti_task_board`;
+  const payload = { title: step.title, description: step.notes || null, project_id: practices[0].project_id, connection_practice_id: step.practice_id, source_connection_step_id: step.id, responsible_id: step.responsible_id || null, due_date: step.due_date || null, workflow_status: isDone ? "done" : step.status === "in_progress" ? "in_progress" : isWaiting ? "blocked" : "todo", priority: isWaiting ? "high" : "normal", category: "connection", blocker_reason: isWaiting ? "In attesa di conferma esterna" : step.blocker_reason || null, next_action: isDone ? null : isWaiting ? "Ottenere la conferma e registrare l’esito" : null, notes: step.confirmation_notes || step.notes || null, completed_at: isDone ? (step.completed_at || new Date().toISOString()) : null };
+  const url = existing.length ? `${URL}/rest/v1/visconti_task_board?id=eq.${encodeURIComponent(existing[0].id)}` : `${URL}/rest/v1/visconti_task_board`;
   const response = await fetch(url, { method: existing.length ? "PATCH" : "POST", headers: headers({ Prefer: "return=representation" }), body: JSON.stringify(payload) });
   const text = await response.text();
   if (!response.ok) throw new Error(`Impossibile sincronizzare l’attività collegata (${response.status})`);
@@ -105,6 +83,7 @@ export async function PATCH(request) {
     if (type === "step" && body.confirmation_status && !enums.confirmationStatus.has(body.confirmation_status)) return NextResponse.json({ error: "Stato conferma non valido" }, { status: 400 });
     if (type === "deadline" && body.status && !enums.deadlineStatus.has(body.status)) return NextResponse.json({ error: "Stato scadenza non valido" }, { status: 400 });
     if (type === "practice" && body.authorization_status && !enums.authorizationStatus.has(body.authorization_status)) return NextResponse.json({ error: "Stato iter autorizzativo non valido" }, { status: 400 });
+    if (type === "practice" && body.voltage_level && !enums.voltageLevel.has(body.voltage_level)) return NextResponse.json({ error: "Livello di tensione non valido: usare AT o AAT" }, { status: 400 });
     if (type === "step") {
       if (body.title != null && !String(body.title).trim()) return NextResponse.json({ error: "Il nome del passaggio è obbligatorio" }, { status: 400 });
       if (body.is_optional != null && typeof body.is_optional !== "boolean") return NextResponse.json({ error: "is_optional non valido" }, { status: 400 });
