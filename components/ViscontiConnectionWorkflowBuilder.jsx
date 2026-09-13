@@ -7,7 +7,23 @@ const TYPE = { milestone: 'Milestone', deadline: 'Scadenza', document: 'Document
 const CONF = { not_required: '', waiting: 'In attesa Terna', confirmed: 'Confermato da Terna', validated: 'Validato da Terna', rejected: 'Respinto / da verificare' };
 
 const TEMPLATES = {
-  standard: { label: 'Connessione standard', items: [['Richiesta connessione', 'milestone', false], ['Invio documenti', 'document', false], ['PTO / STMG ricevuto', 'document', false], ['PTO inviato a Terna — attesa conferma', 'document', true], ['PTO accettato', 'approval', false], ['Avvio iter autorizzativo', 'milestone', false], ['Accettazione / chiusura connessione', 'approval', false]] },
+  standard: { label: 'Connessione standard', items: [
+    ['Richiesta di connessione presentata', 'milestone', false],
+    ['Elaborazione / ricezione preventivo STMG', 'document', false],
+    ['Verifica PTO / soluzione di connessione', 'technical', false],
+    ['Accettazione preventivo STMG', 'approval', false],
+    ['Predisposizione e invio progetto', 'document', false],
+    ['Rilascio benestare tecnico', 'approval', false],
+    ['Avvio iter autorizzativo', 'milestone', false],
+    ['Avanzamento iter autorizzativo', 'authority', false],
+    ['Conseguimento autorizzazione', 'approval', false],
+    ['Richiesta / elaborazione STMD', 'technical', false],
+    ['Accettazione STMD', 'approval', false],
+    ['Stipula contratto di connessione', 'approval', false],
+    ['Avvio lavori / comunicazione avvio', 'milestone', false],
+    ['Fine lavori / documentazione finale', 'document', false],
+    ['Entrata in esercizio / attivazione', 'milestone', false],
+  ] },
   integrazioni: { label: 'Connessione con integrazioni', items: [['Richiesta connessione', 'milestone', false], ['Invio documenti', 'document', false], ['Richiesta integrazione', 'authority', false], ['Invio integrazione', 'document', false], ['PTO / STMG ricevuto', 'document', false], ['PTO inviato a Terna — attesa conferma', 'document', true], ['PTO accettato', 'approval', false], ['Avvio iter autorizzativo', 'milestone', false]] },
   proroga: { label: 'Proroga / variazione', items: [['Richiesta proroga', 'authority', true], ['Istruttoria proroga', 'technical', false], ['Proroga concessa', 'approval', true], ['Nuova scadenza operativa', 'deadline', false], ['Proroga inizio lavori — attesa conferma Terna', 'deadline', true]] },
   autorizzativo: { label: 'Iter autorizzativo complesso', items: [['Avvio iter autorizzativo', 'milestone', false], ['Richiesta parere ente', 'authority', true], ['Invio integrazioni', 'document', false], ['Conferenza / tavolo tecnico', 'technical', false], ['Parere favorevole', 'approval', false], ['Prescrizioni da recepire', 'authority', true], ['Provvedimento autorizzativo', 'approval', true]] },
