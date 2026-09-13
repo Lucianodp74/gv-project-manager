@@ -5,13 +5,21 @@ import { useRouter } from 'next/navigation';
 import ViscontiConnectionWorkflowBuilder from './ViscontiConnectionWorkflowBuilder';
 
 const STANDARD = [
-  ['Richiesta connessione', 'milestone', false],
-  ['Invio documenti', 'document', false],
-  ['PTO / STMG ricevuto', 'document', false],
-  ['PTO inviato a Terna — attesa conferma', 'document', true],
-  ['PTO accettato', 'approval', false],
+  ['Richiesta di connessione presentata', 'milestone', false],
+  ['Elaborazione / ricezione preventivo STMG', 'deadline', false],
+  ['Verifica PTO / soluzione di connessione', 'technical', false],
+  ['Accettazione preventivo STMG', 'approval', false],
+  ['Predisposizione e invio progetto', 'document', false],
+  ['Rilascio benestare tecnico', 'approval', false],
   ['Avvio iter autorizzativo', 'milestone', false],
-  ['Accettazione / chiusura connessione', 'approval', false],
+  ['Avanzamento iter autorizzativo', 'authority', false],
+  ['Conseguimento autorizzazione', 'approval', false],
+  ['Richiesta / elaborazione STMD', 'technical', false],
+  ['Accettazione STMD', 'approval', false],
+  ['Stipula contratto di connessione', 'approval', false],
+  ['Avvio lavori / comunicazione avvio', 'milestone', false],
+  ['Fine lavori / documentazione finale', 'document', false],
+  ['Entrata in esercizio / attivazione', 'milestone', false],
 ];
 
 export default function ViscontiConnectionWorkflowGuard({ practice, steps = [], members = [] }) {
@@ -58,7 +66,7 @@ export default function ViscontiConnectionWorkflowGuard({ practice, steps = [], 
         <div>
           <div className="gv-workflow-kicker">ITER DELLA PRATICA</div>
           <h2>Workflow di connessione</h2>
-          <p>Questa pratica non ha ancora fasi operative registrate. Non mostriamo dati dimostrativi: crea il workflow reale della pratica.</p>
+          <p>Questa pratica non ha ancora fasi operative registrate. Non mostriamo dati dimostrativi: crea il workflow reale della pratica con 15 fasi operative.</p>
         </div>
         <button className="gv-primary" disabled={creating} onClick={createStandardWorkflow}>
           {creating ? 'Creazione…' : 'Crea workflow standard'}
