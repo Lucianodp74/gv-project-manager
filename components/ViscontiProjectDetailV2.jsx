@@ -53,6 +53,20 @@ export default function ViscontiProjectDetailV2() {
     load();
   }, []);
 
+  useEffect(() => {
+    const projectId = new URLSearchParams(window.location.search).get("id");
+    if (!projectId) return;
+    const refreshTasks = async (event) => {
+      if (event?.detail?.projectId && event.detail.projectId !== projectId) return;
+      try {
+        const q = encodeURIComponent(projectId);
+        setTasks(await getRows(`projectId=${q}&resource=tasks`));
+      } catch (_) {}
+    };
+    window.addEventListener("visconti:project-updated", refreshTasks);
+    return () => window.removeEventListener("visconti:project-updated", refreshTasks);
+  }, []);
+
   const memberName = (id) => members.find(m => m.id === id)?.display_name || "Non assegnato";
   const openTasks = useMemo(() => tasks.filter(t => !["done", "cancelled"].includes(t.workflow_status)), [tasks]);
   const blocked = openTasks.filter(t => t.workflow_status === "blocked").length;
