@@ -29,3 +29,45 @@
 .connectionFix :global(.gv-form-grid){display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.connectionFix :global(.gv-form-grid label){display:flex;flex-direction:column;gap:5px}.connectionFix :global(.gv-form-grid .gv-full){grid-column:1/-1}.connectionFix :global(.gv-checks){display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}.connectionFix :global(.gv-checks label){display:flex;align-items:center;gap:6px;font-size:10px}.connectionFix :global(.gv-checks input){min-height:auto}.connectionFix :global(.gv-modal-footer){display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid #edf0f4}
 @media(max-width:900px){.connectionFix :global(.gv-workflow-head){flex-direction:column}.connectionFix :global(.gv-workflow-actions){width:100%}.connectionFix :global(.gv-workflow-actions select){flex:1}.connectionFix :global(.gv-workflow-summary){grid-template-columns:repeat(2,minmax(120px,1fr))}.connectionFix :global(.gv-workflow-step){grid-template-columns:34px minmax(0,1fr)}.connectionFix :global(.gv-step-status){grid-column:2;justify-self:start}.connectionFix :global(.gv-step-actions){margin-top:9px}}
 @media(max-width:600px){.connectionFix{padding:10px 0 30px}.connectionFix :global(.gv-workflow-builder){margin-left:10px;margin-right:10px;padding:16px}.connectionFix :global(.gv-workflow-actions){flex-direction:column;align-items:stretch}.connectionFix :global(.gv-workflow-actions select),.connectionFix :global(.gv-workflow-actions button){width:100%}.connectionFix :global(.gv-workflow-summary){grid-template-columns:1fr 1fr}.connectionFix :global(.gv-workflow-step){grid-template-columns:30px minmax(0,1fr);gap:10px;padding:12px}.connectionFix :global(.gv-step-index){width:28px;height:28px}.connectionFix :global(.gv-step-status){grid-column:2}.connectionFix :global(.gv-step-meta){flex-direction:column;gap:4px}.connectionFix :global(.gv-insert-menu){margin-left:0;padding-left:0;border-left:0}.connectionFix :global(.gv-form-grid){grid-template-columns:1fr}.connectionFix :global(.gv-form-grid .gv-full){grid-column:auto}}
+
+/* Gerarchia operativa: milestone e workflow leggibili anche senza Tailwind */
+.connectionFix :global(section.rounded-2xl > div:nth-child(2)){display:block}
+.connectionFix :global(section.rounded-2xl > div:nth-child(2) > div:last-child){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end}
+.connectionFix :global(section.rounded-2xl > div:nth-child(2) > div:last-child > label){display:flex;flex-direction:column;gap:6px;min-width:0}
+.connectionFix :global(section.rounded-2xl > div:nth-child(2) > div:last-child > label > span){display:block;white-space:normal;line-height:1.25}
+.connectionFix :global(section.rounded-2xl > div:nth-child(3)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.connectionFix :global(section.rounded-2xl > div:nth-child(3) > label){display:flex;flex-direction:column;gap:6px;min-width:0}
+.connectionFix :global(section.rounded-2xl > div:nth-child(3) > label > span){display:block;line-height:1.25;white-space:normal}
+.connectionFix :global(section.rounded-2xl > div:nth-child(4)){display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px;padding:10px 12px;border:1px solid #e5e9ef;border-radius:10px;background:#fafbfc}
+.connectionFix :global(section.rounded-2xl > div:nth-child(4) b){margin-right:2px}
+.connectionFix :global(section.rounded-2xl > div:nth-child(4) span){margin:0}
+.connectionFix :global(.gv-workflow-command){margin:18px 0 10px;padding:18px 20px;border:1px solid #dbe3ee;border-radius:14px;background:#f8fafc;box-shadow:inset 3px 0 0 #172b4d}
+.connectionFix :global(.gv-workflow-command-head){margin-bottom:12px}
+.connectionFix :global(.gv-workflow-command-grid){display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(150px,1fr));gap:10px}
+.connectionFix :global(.gv-workflow-command-grid > div){display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:#fff;border:1px solid #e5e9ef;border-radius:10px;min-width:0}
+.connectionFix :global(.gv-workflow-command-primary){border-color:#cfd9e7!important}
+.connectionFix :global(.gv-command-label){display:block;color:#7a8494;font-size:9px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.connectionFix :global(.gv-workflow-command-grid strong),.connectionFix :global(.gv-workflow-command-next strong){color:#172033;font-size:12px;line-height:1.35}
+.connectionFix :global(.gv-workflow-command-grid span:not(.gv-command-label)),.connectionFix :global(.gv-workflow-command-next span:not(.gv-command-label)){color:#737c8c;font-size:10px;line-height:1.35}
+.connectionFix :global(.gv-workflow-command-action){margin-top:12px;padding-top:12px;border-top:1px solid #e5e9ef}
+.connectionFix :global(.gv-workflow-command-next){display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;margin-top:10px;padding-top:10px;border-top:1px solid #e5e9ef}
+.connectionFix :global(.gv-workflow-command-blocker){border-color:#efcfcc!important;background:#fff7f6!important}
+.connectionFix :global(.gv-workflow-step:has(.gv-step-status.progress)){border-color:#d8c78e;box-shadow:0 0 0 2px rgba(245,158,11,.08);background:#fffdf7}
+.connectionFix :global(.gv-workflow-step:has(.gv-step-status.progress) .gv-step-index){box-shadow:0 0 0 4px rgba(245,158,11,.12)}
+.connectionFix :global(.gv-workflow-step:has(.gv-step-status.done)){background:#fbfdfc}
+.connectionFix :global(.gv-workflow-step:has(.gv-step-status.done) .gv-step-title-row h3){color:#3d4b5e}
+.connectionFix :global(.gv-workflow-step:has(.gv-step-status.pending) .gv-step-index){background:#718096}
+
+@media(max-width:900px){
+  .connectionFix :global(section.rounded-2xl > div:nth-child(2) > div:last-child),.connectionFix :global(section.rounded-2xl > div:nth-child(3)){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .connectionFix :global(.gv-workflow-command-grid){grid-template-columns:1fr 1fr}
+  .connectionFix :global(.gv-workflow-command-primary){grid-column:1/-1}
+}
+@media(max-width:600px){
+  .connectionFix :global(section.rounded-2xl > div:nth-child(2) > div:last-child),.connectionFix :global(section.rounded-2xl > div:nth-child(3)){grid-template-columns:1fr}
+  .connectionFix :global(section.rounded-2xl > div:nth-child(4)){align-items:flex-start}
+  .connectionFix :global(.gv-workflow-command){padding:14px;margin-top:14px}
+  .connectionFix :global(.gv-workflow-command-grid){grid-template-columns:1fr}
+  .connectionFix :global(.gv-workflow-command-primary){grid-column:auto}
+  .connectionFix :global(.gv-workflow-command-action .gv-primary){width:100%;min-height:42px}
+}
