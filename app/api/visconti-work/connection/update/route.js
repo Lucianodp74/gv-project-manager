@@ -153,7 +153,7 @@ export async function PATCH(request) {
     if (!response.ok) return NextResponse.json({ error: `Aggiornamento fallito (${response.status})`, detail: text.slice(0, 300) }, { status: response.status });
     if (type === "step") {
       await syncLinkedTask(id);
-      if (["confirmed", "validated"].includes(payload.confirmation_status) && payload.status === "done" && practiceId) await activateNextStep(practiceId, id);
+      if (payload.status === "done" && practiceId) await activateNextStep(practiceId, id);
     }
     return NextResponse.json({ ok: true, data: text ? JSON.parse(text) : [] });
   } catch (error) {
