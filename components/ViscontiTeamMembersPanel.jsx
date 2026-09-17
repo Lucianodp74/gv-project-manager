@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const VISIBLE_MEMBERS = ['Dario', 'Giggi', 'Federica'];
+
 export default function ViscontiTeamMembersPanel({ members = [] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -10,6 +12,10 @@ export default function ViscontiTeamMembersPanel({ members = [] }) {
   const [role, setRole] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+
+  const visibleMembers = VISIBLE_MEMBERS
+    .map((name) => members.find((member) => (member.display_name || '').trim().toLowerCase() === name.toLowerCase()))
+    .filter(Boolean);
 
   async function addMember() {
     if (!name.trim()) return setMessage('Inserisci il nome della persona.');
@@ -34,7 +40,7 @@ export default function ViscontiTeamMembersPanel({ members = [] }) {
         <button type="button" className="vmp-primary" onClick={() => { setOpen(true); setMessage(''); }}>+ Aggiungi persona</button>
       </div>
       <div className="vmp-list">
-        {members.length ? members.map((m) => <div className="vmp-person" key={m.id}><span className="vmp-avatar">{(m.display_name || '?').slice(0,1).toUpperCase()}</span><div><strong>{m.display_name}</strong><small>{m.role || 'Ruolo non indicato'}</small></div></div>) : <div className="vmp-empty">Nessuna persona attiva configurata.</div>}
+        {visibleMembers.length ? visibleMembers.map((m) => <div className="vmp-person" key={m.id}><span className="vmp-avatar">{(m.display_name || '?').slice(0,1).toUpperCase()}</span><div><strong>{m.display_name}</strong><small>{m.role || 'Ruolo non indicato'}</small></div></div>) : <div className="vmp-empty">Nessuna delle persone selezionate è attiva.</div>}
       </div>
       {message && !open && <div className="vmp-message">{message}</div>}
       {open && <div className="vmp-modal-backdrop"><div className="vmp-modal"><h3>Aggiungi persona</h3><p>La persona sarà subito disponibile nei campi “Responsabile”.</p><label>Nome<input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="es. Mario Rossi" /></label><label>Ruolo<input value={role} onChange={e => setRole(e.target.value)} placeholder="es. Project Manager" /></label>{message && <div className="vmp-error">{message}</div>}<div className="vmp-actions"><button type="button" onClick={() => setOpen(false)}>Annulla</button><button type="button" className="vmp-primary" disabled={saving} onClick={addMember}>{saving ? 'Salvataggio…' : 'Aggiungi'}</button></div></div></div>}
