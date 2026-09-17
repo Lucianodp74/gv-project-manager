@@ -1,65 +1,104 @@
 "use client";
 
-import React from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const phases = [
-  ["Scouting", "Completato", "green"],
-  ["Connessione", "In corso", "blue"],
-  ["Sviluppo", "In corso", "blue"],
-  ["Specialisti", "In corso", "amber"],
-  ["Presentazione", "Da avviare", "neutral"],
-  ["Autorizzazione", "Da avviare", "neutral"],
-];
-
-const activities = [
-  ["Verificare PTO e prossime scadenze Terna", "Dario", "Oggi", "red"],
-  ["Aggiornare layout e cavidotto", "Roberto", "03/09", "blue"],
-  ["Richiedere relazione geologica", "Vincenzo", "05/09", "amber"],
-  ["Coordinare monitoraggio fauna", "Vincenzo", "10/09", "blue"],
-];
-
-const specialists = [
-  ["Geologo", "Incarico da verificare", "amber"],
-  ["Archeologo", "In corso", "blue"],
-  ["Acustico", "In corso", "blue"],
-  ["VINCA", "Da avviare", "neutral"],
-  ["Monitoraggio fauna", "In corso", "blue"],
-];
-
-function Badge({ children, tone = "neutral" }) {
-  return <span className={`vp-badge vp-${tone}`}>{children}</span>;
+async function getRows(path) {
+  const response = await fetch(`/api/visconti-project-detail?${path}`, { cache: "no-store" });
+  const text = await response.text();
+  let data = [];
+  try { data = text ? JSON.parse(text) : []; } catch (_) {}
+  if (!response.ok) throw new Error(data?.error || `Database error ${response.status}`);
+  return data;
 }
 
+async function updateProjectStatus(projectId, status, archivedFromStatus = null) {
+  const response = await fetch("/api/visconti-project-detail", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId, status, archivedFromStatus }),
+    cache: "no-store",
+  });
+  const text = await response.text(); let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch (_) {}
+  if (!response.ok) throw new Error(data?.error || `Impossibile aggiornare il progetto (${response.status}).`);
+  return data;
+}
+
+function fmt(v) { return v ? new Date(`${String(v).slice(0,10)}T00:00:00`).toLocaleDateString("it-IT") : "—"; }
+function Badge({ children, tone = "neutral" }) { return <span className={`pd-badge pd-${tone}`}>{children}</span>; }
+function tone(v) { return v === "overdue" ? "red" : v === "blocked" || v === "urgent" || v === "soon" ? "amber" : v === "normal" ? "green" : "blue"; }
+function statusLabel(v) { return ({todo:"Da fare",in_progress:"In corso",blocked:"Bloccata",done:"Completata",cancelled:"Annullata"}[v] || v || "—"); }
+
 export default function ViscontiProjectDetailV2() {
-  return (
-    <main className="vp-shell">
-      <style>{`
-        .vp-shell{min-height:100vh;background:#f6f7f9;color:#172033;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-        .vp-top{background:#fff;border-bottom:1px solid #e7e9ee;padding:16px 34px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}.vp-brand{font-weight:800}.vp-back{font-size:12px;color:#657087;text-decoration:none;margin-bottom:5px;display:block}.vp-btn{border:1px solid #e1e4ea;background:#fff;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;color:#263044}
-        .vp-main{max-width:1440px;margin:auto;padding:28px 34px 50px}.vp-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#8991a1;font-weight:750}.vp-title{font-size:30px;letter-spacing:-.04em;margin:5px 0}.vp-sub{font-size:13px;color:#70798a}.vp-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px}.vp-status{display:flex;gap:8px;align-items:center}.vp-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(310px,.75fr);gap:18px}.vp-card{background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 2px 10px rgba(20,28,45,.03);padding:19px}.vp-card+.vp-card{margin-top:18px}.vp-title2{font-size:14px;font-weight:800;margin-bottom:14px}.vp-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}.vp-meta-box{background:#f8f9fb;border-radius:10px;padding:12px}.vp-meta-box small{display:block;font-size:10px;color:#8a92a1;text-transform:uppercase;letter-spacing:.06em}.vp-meta-box strong{display:block;font-size:13px;margin-top:5px}.vp-phases{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.vp-phase{border:1px solid #edf0f3;border-radius:10px;padding:10px}.vp-phase b{display:block;font-size:11px}.vp-phase span{display:block;font-size:10px;color:#7f8796;margin-top:5px}.vp-table{width:100%;border-collapse:collapse}.vp-table th{text-align:left;color:#9aa1ae;font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding-bottom:9px}.vp-table td{border-top:1px solid #eef0f3;padding:12px 5px;font-size:12px}.vp-muted{color:#7b8392}.vp-badge{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:800;white-space:nowrap}.vp-green{background:#eaf8f1;color:#18794e}.vp-blue{background:#edf3ff;color:#3d61ad}.vp-amber{background:#fff5df;color:#996400}.vp-red{background:#fff0ef;color:#b43a34}.vp-neutral{background:#f0f2f5;color:#626b7b}.vp-list{display:grid;gap:8px}.vp-row{display:flex;justify-content:space-between;align-items:center;border:1px solid #edf0f3;border-radius:10px;padding:11px 12px}.vp-row strong{font-size:12px}.vp-row span{font-size:10px;color:#7d8592;display:block;margin-top:3px}.vp-alert{background:#fff9ee;border:1px solid #f1dfb8;border-radius:11px;padding:12px;margin-top:14px}.vp-alert b{font-size:11px}.vp-alert p{font-size:11px;color:#747d8b;margin:4px 0 0;line-height:1.45}.vp-timeline{border-left:2px solid #e9edf2;padding-left:15px;display:grid;gap:14px}.vp-event{position:relative}.vp-event:before{content:"";position:absolute;left:-21px;top:3px;width:8px;height:8px;border-radius:50%;background:#4769b8}.vp-event b{font-size:11px}.vp-event span{display:block;font-size:11px;color:#7d8592;margin-top:3px}
-        @media(max-width:950px){.vp-grid{grid-template-columns:1fr}.vp-phases{grid-template-columns:repeat(3,1fr)}.vp-meta{grid-template-columns:repeat(2,1fr)}.vp-main{padding:22px 18px}.vp-top{padding:14px 18px}}
-      `}</style>
-      <header className="vp-top"><div><a href="/visconti-work" className="vp-back">← Control Tower</a><div className="vp-brand">GRUPPO VISCONTI · WORK V2</div></div><button className="vp-btn">Modifica progetto</button></header>
-      <section className="vp-main">
-        <div className="vp-head"><div><div className="vp-kicker">Scheda progetto</div><h1 className="vp-title">Progetto Eolico Sicilia</h1><p className="vp-sub">Eolico · Sicilia · Coordinatore: Vincenzo · Sviluppo interno</p></div><div className="vp-status"><Badge tone="green">IN LINEA</Badge><Badge tone="blue">68%</Badge></div></div>
-        <div className="vp-card">
-          <div className="vp-title2">Situazione del progetto</div>
-          <div className="vp-meta"><div className="vp-meta-box"><small>Responsabile</small><strong>Vincenzo</strong></div><div className="vp-meta-box"><small>Supervisione</small><strong>Luciano</strong></div><div className="vp-meta-box"><small>Modalità</small><strong>Interno</strong></div><div className="vp-meta-box"><small>Destinazione</small><strong>Da decidere</strong></div></div>
-          <div className="vp-phases">{phases.map(([a,b,t])=><div className="vp-phase" key={a}><b>{a}</b><span><Badge tone={t}>{b}</Badge></span></div>)}</div>
-        </div>
-        <div className="vp-grid">
-          <div>
-            <section className="vp-card"><div className="vp-title2">Connessione</div><div className="vp-meta"><div className="vp-meta-box"><small>Pratica</small><strong>In corso</strong></div><div className="vp-meta-box"><small>PTO</small><strong>Da verificare</strong></div><div className="vp-meta-box"><small>Terna</small><strong>Iter attivo</strong></div><div className="vp-meta-box"><small>Prossima scadenza</small><strong>03/09/2026</strong></div></div><div className="vp-alert"><b>⚠ Attenzione alla connessione</b><p>Dario deve verificare PTO e prossime scadenze. Questa informazione deve diventare automatica quando collegheremo il database reale.</p></div></section>
-            <section className="vp-card"><div className="vp-title2">Sviluppo tecnico</div><table className="vp-table"><thead><tr><th>Componente</th><th>Responsabile</th><th>Stato</th></tr></thead><tbody>{[["Layout impianto","Roberto","In corso"],["KMZ / GIS","Roberto","In corso"],["Cavidotto","Vincenzo","In corso"],["Strade","Team progetto","In corso"],["SSE Terna","Dario","Da verificare"],["Seconda vincolistica","Vincenzo","Da controllare"]].map(x=><tr key={x[0]}><td><b>{x[0]}</b></td><td className="vp-muted">{x[1]}</td><td><Badge tone={x[2]==="Da verificare"||x[2]==="Da controllare"?"amber":"blue"}>{x[2]}</Badge></td></tr>)}</tbody></table></section>
-            <section className="vp-card"><div className="vp-title2">Attività e prossimi passi</div><table className="vp-table"><thead><tr><th>Attività</th><th>Responsabile</th><th>Scadenza</th></tr></thead><tbody>{activities.map(x=><tr key={x[0]}><td><b>{x[0]}</b></td><td className="vp-muted">{x[1]}</td><td><Badge tone={x[3]}>{x[2]}</Badge></td></tr>)}</tbody></table></section>
-          </div>
-          <aside>
-            <section className="vp-card"><div className="vp-title2">Specialisti</div><div className="vp-list">{specialists.map(x=><div className="vp-row" key={x[0]}><div><strong>{x[0]}</strong><span>Professionista esterno</span></div><Badge tone={x[2]}>{x[1]}</Badge></div>)}</div></section>
-            <section className="vp-card"><div className="vp-title2">Enti e autorizzazioni</div><div className="vp-list"><div className="vp-row"><div><strong>Pareri</strong><span>Nessuna richiesta critica registrata</span></div><Badge tone="green">OK</Badge></div><div className="vp-row"><div><strong>Integrazioni</strong><span>Da collegare al registro enti</span></div><Badge tone="neutral">0</Badge></div></div></section>
-            <section className="vp-card"><div className="vp-title2">Cronologia</div><div className="vp-timeline"><div className="vp-event"><b>01/09/2026</b><span>Controllo progetto V2</span></div><div className="vp-event"><b>31/08/2026</b><span>Connessione in gestione</span></div><div className="vp-event"><b>28/08/2026</b><span>Layout preliminare aggiornato</span></div></div></section>
-          </aside>
-        </div>
-      </section>
-    </main>
-  );
+  const [project, setProject] = useState(null), [tasks, setTasks] = useState([]), [connections, setConnections] = useState([]), [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true), [error, setError] = useState(""), [saving, setSaving] = useState(false), [actionError, setActionError] = useState("");
+
+  useEffect(() => {
+    const projectId = new URLSearchParams(window.location.search).get("id");
+    async function load() {
+      try {
+        if (!projectId) throw new Error("Manca l'identificativo del progetto.");
+        const q = encodeURIComponent(projectId);
+        const [p, t, c, m] = await Promise.all([
+          getRows(`projectId=${q}&resource=project`),
+          getRows(`projectId=${q}&resource=tasks`),
+          getRows(`projectId=${q}&resource=connections`),
+          getRows("resource=members"),
+        ]);
+        if (!p?.[0]) throw new Error("Progetto non trovato.");
+        setProject(p[0]); setTasks(t || []); setConnections(c || []); setMembers(m || []);
+      } catch (e) { setError(e.message || "Impossibile caricare il progetto."); }
+      finally { setLoading(false); }
+    }
+    load();
+  }, []);
+
+  useEffect(() => {
+    const projectId = new URLSearchParams(window.location.search).get("id");
+    if (!projectId) return;
+    const refreshTasks = async (event) => {
+      if (event?.detail?.projectId && event.detail.projectId !== projectId) return;
+      try {
+        const q = encodeURIComponent(projectId);
+        setTasks(await getRows(`projectId=${q}&resource=tasks`));
+      } catch (_) {}
+    };
+    window.addEventListener("visconti:project-updated", refreshTasks);
+    return () => window.removeEventListener("visconti:project-updated", refreshTasks);
+  }, []);
+
+  const memberName = (id) => members.find(m => m.id === id)?.display_name || "Non assegnato";
+  const openTasks = useMemo(() => tasks.filter(t => !["done", "cancelled"].includes(t.workflow_status)), [tasks]);
+  const blocked = openTasks.filter(t => t.workflow_status === "blocked").length;
+  const overdue = openTasks.filter(t => t.attention_state === "overdue").length;
+  const waitingConfirmations = connections.reduce((sum, c) => sum + Number(c.waiting_terna_confirmations || 0), 0);
+  const connectionPower = connections.find(c => c?.power_mw !== null && c?.power_mw !== undefined)?.power_mw ?? null;
+  const archived = project?.status === "archived";
+
+  async function toggleArchive() {
+    if (!project) return;
+    const nextStatus = archived ? (project.archived_from_status || "connection") : "archived";
+    const message = archived ? "Ripristinare il progetto nella gestione attiva?" : "Archiviare il progetto? I dati resteranno conservati.";
+    if (!window.confirm(message)) return;
+    setSaving(true); setActionError("");
+    try {
+      const data = await updateProjectStatus(project.id, nextStatus, archived ? project.archived_from_status : project.status);
+      setProject(prev => ({ ...prev, ...(data?.project || {}), status: nextStatus, archived_from_status: archived ? null : prev.status }));
+    } catch (e) { setActionError(e.message || "Aggiornamento non riuscito."); }
+    finally { setSaving(false); }
+  }
+
+  if (loading) return <main className="pd-shell"><div className="pd-loading">Caricamento scheda progetto…</div></main>;
+  if (error || !project) return <main className="pd-shell"><div className="pd-error"><b>{error || "Progetto non disponibile"}</b><a href="/visconti-work/projects">← Torna ai progetti</a></div></main>;
+
+  return <main className="pd-shell"><style>{`.pd-shell{min-height:100vh;background:#f6f7f9;color:#172033;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.pd-top{background:#fff;border-bottom:1px solid #e7e9ee;padding:14px 34px;display:flex;justify-content:space-between;align-items:center}.pd-brand{font-weight:800}.pd-back{display:block;color:#687181;text-decoration:none;font-size:11px;margin-bottom:4px}.pd-main{max-width:1380px;margin:auto;padding:30px 34px 50px}.pd-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.pd-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#8a92a1;font-weight:800}.pd-title{font-size:30px;letter-spacing:-.04em;margin:5px 0}.pd-sub{font-size:13px;color:#737c8c}.pd-actions{display:flex;gap:8px;flex-wrap:wrap}.pd-btn{border:1px solid #dfe3e9;background:#fff;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:750;text-decoration:none;color:#172033}.pd-primary{background:#172b4d;color:#fff;border-color:#172b4d}.pd-grid{display:grid;grid-template-columns:1.5fr .75fr;gap:18px;margin-top:20px}.pd-card{background:#fff;border:1px solid #e7e9ee;border-radius:14px;padding:19px;box-shadow:0 2px 10px rgba(20,28,45,.03)}.pd-card+.pd-card{margin-top:18px}.pd-title2{font-size:14px;font-weight:800;margin-bottom:14px}.pd-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.pd-kpi{background:#fff;border:1px solid #e7e9ee;border-radius:12px;padding:13px}.pd-kpi small{display:block;color:#8a92a1;font-size:9px;text-transform:uppercase}.pd-kpi b{display:block;font-size:21px;margin-top:5px}.pd-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.pd-box{background:#f8f9fb;border-radius:10px;padding:11px}.pd-box small{display:block;color:#8a92a1;text-transform:uppercase;font-size:9px}.pd-box strong{display:block;font-size:12px;margin-top:5px}.pd-task{display:grid;grid-template-columns:1.6fr .9fr .75fr .65fr;gap:10px;align-items:center;text-decoration:none;color:inherit;border-top:1px solid #eef0f3;padding:12px 0;font-size:11px}.pd-task:first-of-type{border-top:0}.pd-muted{color:#7c8493}.pd-badge{display:inline-flex;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:800;white-space:nowrap}.pd-neutral{background:#f0f2f5;color:#626b7a}.pd-green{background:#eaf8f1;color:#18794e}.pd-amber{background:#fff5df;color:#996400}.pd-red{background:#fff0ef;color:#b43a34}.pd-blue{background:#edf3ff;color:#3d61ad}.pd-empty{color:#808897;font-size:12px;padding:12px 0}.pd-alert{border:1px solid #f0dcb4;background:#fff9ed;border-radius:11px;padding:13px;font-size:11px}.pd-alert p{font-size:10px;color:#747d8b;line-height:1.45;margin:7px 0 0}.pd-conn{border:1px solid #e8ebf0;border-radius:11px;padding:13px;margin-top:9px;background:#fff;text-decoration:none;color:inherit;display:block}.pd-conn strong{font-size:12px}.pd-conn small{display:block;color:#7c8493;margin-top:4px}.pd-power-row{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.pd-power-card{flex:1 1 180px;background:#fff;border:1px solid #e7e9ee;border-radius:12px;padding:13px}.pd-power-card small{display:block;color:#8a92a1;font-size:9px;text-transform:uppercase}.pd-power-card b{display:block;font-size:22px;margin-top:5px}.pd-power-card span{display:block;color:#737c8c;font-size:9px;margin-top:3px}.pd-error a{display:block;margin-top:15px;color:#3d61ad;text-decoration:none;font-size:12px}.pd-loading,.pd-error{max-width:800px;margin:80px auto;padding:30px;background:#fff;border:1px solid #e7e9ee;border-radius:14px}.pd-action-error{margin-top:10px;color:#b43a34;font-size:10px}@media(max-width:950px){.pd-grid{grid-template-columns:1fr}.pd-meta{grid-template-columns:1fr 1fr}.pd-kpis{grid-template-columns:repeat(3,1fr)}.pd-main{padding:22px 18px}}@media(max-width:620px){.pd-head{display:block}.pd-actions{margin-top:14px}.pd-kpis{grid-template-columns:1fr 1fr}.pd-task{grid-template-columns:1fr 1fr}.pd-power-row{margin-top:14px}.pd-power-card{flex-basis:140px}.pd-power-card b{font-size:20px}}`}</style>
+    <header className="pd-top"><div><a className="pd-back" href="/visconti-work/projects">← Progetti</a><div className="pd-brand">GRUPPO VISCONTI · WORK V2</div></div><div className="pd-actions"><a className="pd-btn" href="/visconti-work/tasks">Attività</a>{connections.length>0&&<a className="pd-btn pd-primary" href={`/visconti-work/connection?project=${encodeURIComponent(project.id)}`}>Connessione</a>}<button className="pd-btn" onClick={toggleArchive} disabled={saving}>{saving ? "Salvataggio…" : archived ? "Ripristina progetto" : "Archivia progetto"}</button></div></header>
+    <section className="pd-main"><div className="pd-head"><div><div className="pd-kicker">Centro operativo del progetto</div><h1 className="pd-title">{project.name}</h1><p className="pd-sub">{project.project_code || "—"} · {project.region || "—"}</p><div className="pd-power-row"><div className="pd-power-card"><small>Potenza progetto</small><b>{project.power_mw ?? "—"} MW</b><span>Potenza complessiva del progetto</span></div><div className="pd-power-card"><small>Richiesta di connessione</small><b>{connectionPower ?? "—"} MW</b><span>Potenza della pratica di connessione</span></div></div></div><Badge tone={archived ? "neutral" : blocked || overdue || waitingConfirmations ? "amber" : "green"}>{archived ? "Archiviato" : blocked ? `${blocked} blocchi` : overdue ? `${overdue} scadenze attività` : waitingConfirmations ? `${waitingConfirmations} conferme in attesa` : "In linea"}</Badge></div>
+      {actionError&&<div className="pd-action-error">{actionError}</div>}
+      <div className="pd-kpis" style={{marginTop:18}}><div className="pd-kpi"><small>Attività aperte</small><b>{openTasks.length}</b></div><div className="pd-kpi"><small>Bloccate</small><b>{blocked}</b></div><div className="pd-kpi"><small>Scadute</small><b>{overdue}</b></div><div className="pd-kpi"><small>Connessioni</small><b>{connections.length}</b></div><div className="pd-kpi"><small>Conferme in attesa</small><b>{waitingConfirmations}</b></div></div>
+      <div className="pd-grid"><div><section className="pd-card"><div className="pd-title2">Quadro del progetto</div><div className="pd-meta"><div className="pd-box"><small>Stato</small><strong>{project.status || "—"}</strong></div><div className="pd-box"><small>Codice</small><strong>{project.project_code || "—"}</strong></div><div className="pd-box"><small>Responsabile</small><strong>{memberName(project.responsible_id)}</strong></div><div className="pd-box"><small>Regione</small><strong>{project.region || "—"}</strong></div></div></section>
+      <section className="pd-card"><div className="pd-title2">Da fare ora</div>{openTasks.slice(0,10).map(t=><a className="pd-task" key={t.id} href={`/visconti-work/tasks?task=${encodeURIComponent(t.id)}&project=${encodeURIComponent(project.id)}`}><div><b>{t.title}</b><div className="pd-muted">{t.next_action || "Nessuna prossima azione"}</div></div><div>{memberName(t.responsible_id)}</div><div>{fmt(t.due_date)}</div><div><Badge tone={tone(t.attention_state)}>{statusLabel(t.workflow_status)}</Badge></div></a>)}{!openTasks.length&&<div className="pd-empty">Nessuna attività aperta.</div>}</section></div>
+      <aside><section className="pd-card"><div className="pd-title2">Controllo</div><div className="pd-alert"><b>{archived ? "Progetto archiviato." : blocked ? "Ci sono attività bloccate." : overdue ? "Ci sono attività scadute." : waitingConfirmations ? "In attesa di conferme esterne." : "Nessuna criticità rilevata."}</b><p>{archived ? "Il progetto resta consultabile e non viene eliminato." : "La scheda evidenzia attività, scadenze, blocchi e conferme esterne senza duplicare il lavoro operativo."}</p></div></section>
+      <section className="pd-card"><div className="pd-title2">Connessioni</div>{connections.length?connections.map(c=><a className="pd-conn" key={c.id} href={`/visconti-work/connection?practice=${encodeURIComponent(c.id)}`}><strong>{c.practice_code || c.tica_code || "Pratica di connessione"}</strong><small>{c.connection_holder || "Soggetto connessione non indicato"} · {c.pto_status_label || c.connection_status || "Stato da verificare"}</small></a>):<div className="pd-empty">Nessuna connessione collegata.</div>}</section></aside></div>
+    </section></main>;
 }
