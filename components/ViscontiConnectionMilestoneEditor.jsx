@@ -57,6 +57,15 @@ export default function ViscontiConnectionMilestoneEditor({ practice }) {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <style>{`
+        .gv-milestone-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:4px}
+        .gv-milestone-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:16px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;box-sizing:border-box}
+        .gv-milestone-label{display:block;font-size:12px;line-height:18px;font-weight:700;color:#334155}
+        .gv-milestone-input{display:block;width:100%;height:46px;min-width:0;box-sizing:border-box;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;font-size:14px}
+        .gv-milestone-input:focus{outline:none;border-color:#94a3b8}
+        @media(max-width:1100px){.gv-milestone-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:680px){.gv-milestone-grid{grid-template-columns:1fr;gap:14px}.gv-milestone-card{padding:14px}}
+      `}</style>
       <div className="mb-7 flex flex-col gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Controllo pratica</div>
@@ -84,11 +93,11 @@ export default function ViscontiConnectionMilestoneEditor({ practice }) {
           <span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500">{FIELDS.filter(([key]) => values[key]).length}/{FIELDS.length} registrate</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="gv-milestone-grid">
           {FIELDS.map(([key, label]) => (
-            <label key={key} className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <span className="mb-3 block text-xs font-semibold text-slate-700">{label}</span>
-              <input type="date" value={values[key] || ''} onChange={(e) => set(key, e.target.value)} className="block h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400" />
+            <label key={key} className="gv-milestone-card">
+              <span className="gv-milestone-label">{label}</span>
+              <input type="date" value={values[key] || ''} onChange={(e) => set(key, e.target.value)} className="gv-milestone-input" />
             </label>
           ))}
         </div>
