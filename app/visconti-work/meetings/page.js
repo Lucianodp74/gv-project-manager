@@ -1,4 +1,5 @@
 import ViscontiWeeklyMeetingV5 from "@/components/ViscontiWeeklyMeetingV5";
+import ViscontiMeetingDiscussionPanel from "@/components/ViscontiMeetingDiscussionPanel";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 import { getViscontiTaskData } from "@/lib/visconti-task-data";
 
@@ -7,7 +8,7 @@ export const revalidate = 0;
 
 export const metadata = {
   title: "Riunione settimanale · Visconti Work",
-  description: "Regia settimanale: verifica, decisioni, incarichi e controllo della settimana successiva",
+  description: "Regia settimanale: verifica, discussione, decisioni, incarichi e controllo della settimana successiva",
 };
 
 export default async function MeetingsPage() {
@@ -23,5 +24,8 @@ export default async function MeetingsPage() {
     members: taskData.members?.length ? taskData.members : workData.members || [],
   };
 
-  return <ViscontiWeeklyMeetingV5 data={data} />;
+  return <>
+    <ViscontiMeetingDiscussionPanel projects={data.projects || []} members={data.members || []} />
+    <ViscontiWeeklyMeetingV5 data={data} />
+  </>;
 }
