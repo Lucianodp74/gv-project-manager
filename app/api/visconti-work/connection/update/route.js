@@ -21,7 +21,7 @@ const practiceAliases = {
   pto_accepted_date: "pto_accepted_at",
   pto_validated_date: "pto_validated_at",
   iter_start_date: "authorization_start_at",
-  start_works_validated_date: "start_works_validated_at",
+  start_works_validated_date: "authorization_start_validated_at",
 };
 
 function clean(body, type) {
@@ -89,6 +89,20 @@ async function syncLinkedTask(stepId) {
   }
 }
 
+async function activateNextStep(practiceId, completedStepId) {
+  const currentRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=sort_order&practice_id=eq.${encodeURIComponent(practiceId)}&id=eq.${encodeURIComponent(completedStepId)}&limit=1`, { headers: headers(), cache: "no-store" });
+  if (!currentRes.ok) throw new Error("Impossibile individuare la fase corrente");
+  const currentRows = await currentRes.json();
+  if (!currentRows.length) return;
+  const nextRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=id,status,is_not_applicable&practice_id=eq.${encodeURIComponent(practiceId)}&sort_order=gt.${encodeURIComponent(currentRows[0].sort_order ?? 0)}&order=sort_order.asc&limit=20`, { headers: headers(), cache: "no-store" });
+  if (!nextRes.ok) throw new Error("Impossibile individuare la fase successiva");
+  const nextRows = await nextRes.json();
+  const next = nextRows.find(row => !row.is_not_applicable && row.status !== "done");
+  if (!next || next.status === "in_progress") return;
+  const patchRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?id=eq.${encodeURIComponent(next.id)}`, { method: "PATCH", headers: headers({ Prefer: "return=minimal" }), body: JSON.stringify({ status: "in_progress", started_date: new Date().toISOString().slice(0, 10) }) });
+  if (!patchRes.ok) throw new Error("Impossibile attivare la fase successiva");
+}
+
 export async function PATCH(request) {
   if (!URL || !KEY) return NextResponse.json({ error: "Supabase non configurato" }, { status: 503 });
   try {
@@ -114,13 +128,21 @@ export async function PATCH(request) {
     const table = type === "practice" ? "connection_practices" : type === "step" ? "connection_workflow_builder" : "connection_deadlines";
     const payload = clean(body, type);
     if (!Object.keys(payload).length) return NextResponse.json({ error: "Nessun campo da aggiornare" }, { status: 400 });
-    if (type === "step" && payload.status && ["in_progress", "done"].includes(payload.status)) {
-      const practiceRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=practice_id&id=eq.${encodeURIComponent(id)}&limit=1`, { headers: headers(), cache: "no-store" });
+    let practiceId = null;
+    if (type === "step" && (payload.status && ["in_progress", "done"].includes(payload.status) || ["confirmed", "validated"].includes(payload.confirmation_status))) {
+      const practiceRes = await fetch(`${URL}/rest/v1/connection_workflow_builder?select=practice_id,status,confirmation_status&id=eq.${encodeURIComponent(id)}&limit=1`, { headers: headers(), cache: "no-store" });
       if (!practiceRes.ok) return NextResponse.json({ error: "Impossibile verificare la pratica della fase" }, { status: 500 });
       const practiceRows = await practiceRes.json();
       if (!practiceRows.length) return NextResponse.json({ error: "Fase non trovata" }, { status: 404 });
-      const sequentialError = await ensureSequentialStep(practiceRows[0].practice_id, id, payload.status);
-      if (sequentialError) return NextResponse.json({ error: sequentialError }, { status: 409 });
+      practiceId = practiceRows[0].practice_id;
+      if (payload.status && ["in_progress", "done"].includes(payload.status)) {
+        const sequentialError = await ensureSequentialStep(practiceId, id, payload.status);
+        if (sequentialError) return NextResponse.json({ error: sequentialError }, { status: 409 });
+      }
+      if (["confirmed", "validated"].includes(payload.confirmation_status) && !payload.status) {
+        payload.status = "done";
+        payload.completed_at = payload.completed_at || new Date().toISOString().slice(0, 10);
+      }
     }
     if (type === "step" && payload.status === "done" && !payload.completed_at) payload.completed_at = new Date().toISOString().slice(0, 10);
     if (type === "step" && payload.confirmation_status && payload.confirmation_status !== "waiting" && payload.confirmation_status !== "not_required" && !payload.confirmation_date) payload.confirmation_date = new Date().toISOString().slice(0, 10);
@@ -129,7 +151,10 @@ export async function PATCH(request) {
     const response = await fetch(`${URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: headers({ Prefer: "return=representation" }), body: JSON.stringify(payload), cache: "no-store" });
     const text = await response.text();
     if (!response.ok) return NextResponse.json({ error: `Aggiornamento fallito (${response.status})`, detail: text.slice(0, 300) }, { status: response.status });
-    if (type === "step") await syncLinkedTask(id);
+    if (type === "step") {
+      await syncLinkedTask(id);
+      if (["confirmed", "validated"].includes(payload.confirmation_status) && payload.status === "done" && practiceId) await activateNextStep(practiceId, id);
+    }
     return NextResponse.json({ ok: true, data: text ? JSON.parse(text) : [] });
   } catch (error) {
     console.error("Connection update failed", error);
