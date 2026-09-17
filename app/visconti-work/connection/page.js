@@ -18,6 +18,26 @@ export default async function ConnectionPage({ searchParams }) {
   const data = await getViscontiConnectionData(params?.practice || null, params?.project || null);
   const showFullDetail = params?.detail === "full";
   return <div className={connectionStyles.connectionFix}>
+    <div style={{ maxWidth: 1320, margin: "0 auto 14px", padding: "0 34px" }}>
+      <a
+        href="/visconti-work/connection"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          color: "#16345f",
+          fontSize: 12,
+          fontWeight: 700,
+          textDecoration: "none",
+          padding: "7px 11px",
+          border: "1px solid #d7e0ec",
+          borderRadius: 8,
+          background: "#fff",
+        }}
+      >
+        ← Torna alla Tower Connessioni
+      </a>
+    </div>
     <ViscontiConnectionControlTower data={data.controlTower} />
     <ViscontiConnectionMilestoneEditor practice={data.practice} />
     <ViscontiTeamMembersPanel members={data.members} />
