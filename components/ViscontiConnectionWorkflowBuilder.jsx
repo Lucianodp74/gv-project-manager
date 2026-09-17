@@ -128,12 +128,20 @@ export default function ViscontiConnectionWorkflowBuilder({ practice, steps = []
   function confirmationActions(step) {
     if (!step.confirmation_required) return null;
     const state = step.confirmation_status || 'waiting';
+    const confirm = async (confirmation_status) => {
+      if (saving) return;
+      const completion = confirmation_status === 'confirmed' || confirmation_status === 'validated';
+      await patch(step.id, {
+        confirmation_status,
+        ...(completion ? { status: 'done' } : {}),
+      });
+    };
     return <div className={`gv-confirmation gv-confirmation-${state}`}>
       <span className="gv-confirmation-label">Terna: {CONF[state] || 'In attesa Terna'}</span>
       <div className="gv-confirmation-actions">
-        {state !== 'confirmed' && <button disabled={saving} onClick={() => patch(step.id, { confirmation_status: 'confirmed' })}>✓ Confermato</button>}
-        {state !== 'validated' && <button disabled={saving} onClick={() => patch(step.id, { confirmation_status: 'validated' })}>✓ Validato</button>}
-        {state !== 'rejected' && <button disabled={saving} className="gv-danger" onClick={() => patch(step.id, { confirmation_status: 'rejected' })}>Respinto</button>}
+        {state !== 'confirmed' && <button disabled={saving} onClick={() => confirm('confirmed')}>✓ Confermato</button>}
+        {state !== 'validated' && <button disabled={saving} onClick={() => confirm('validated')}>✓ Validato</button>}
+        {state !== 'rejected' && <button disabled={saving} className="gv-danger" onClick={() => confirm('rejected')}>Respinto</button>}
       </div>
     </div>;
   }
