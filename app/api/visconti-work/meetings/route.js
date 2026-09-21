@@ -24,9 +24,15 @@ async function db(path, options = {}) {
 export async function GET(request) {
   try {
     const history = new URL(request.url).searchParams.get("history") === "1";
-    const meetings = history
-      ? await db("visconti_meetings?select=*&order=meeting_date.desc&order=created_at.desc&limit=1")
-      : await db("visconti_meetings?select=*&status=in.(draft,in_progress)&order=meeting_date.desc&order=created_at.desc&limit=1");
+    if (history) {
+      const meetings = await db("visconti_meetings?select=*&order=meeting_date.desc&order=created_at.desc&limit=50");
+      const list = Array.isArray(meetings) ? meetings : [];
+      const topics = list.length
+        ? await db(`visconti_meeting_topics?select=*&meeting_id=in.(${list.map((m) => m.id).join(",")})&order=sort_order.asc&order=created_at.asc`)
+        : [];
+      return NextResponse.json({ meetings: list, topics: Array.isArray(topics) ? topics : [] });
+    }
+    const meetings = await db("visconti_meetings?select=*&status=in.(draft,in_progress)&order=meeting_date.desc&order=created_at.desc&limit=1");
     const meeting = Array.isArray(meetings) ? meetings[0] : null;
     if (!meeting) return NextResponse.json({ meeting: null, topics: [] });
     const topics = await db(`visconti_meeting_topics?select=*&meeting_id=eq.${encodeURIComponent(meeting.id)}&order=sort_order.asc&order=created_at.asc`);
