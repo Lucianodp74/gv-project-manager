@@ -1,5 +1,6 @@
 import ViscontiWeeklyMeetingV5 from "@/components/ViscontiWeeklyMeetingV5";
 import ViscontiMeetingDiscussionPanel from "@/components/ViscontiMeetingDiscussionPanel";
+import ViscontiMeetingActionsEditor from "@/components/ViscontiMeetingActionsEditor";
 import { getViscontiWorkData } from "@/lib/visconti-work-data";
 import { getViscontiTaskData } from "@/lib/visconti-task-data";
 
@@ -27,5 +28,6 @@ export default async function MeetingsPage() {
   return <>
     <ViscontiMeetingDiscussionPanel projects={data.projects || []} members={data.members || []} />
     <ViscontiWeeklyMeetingV5 data={data} />
+    <ViscontiMeetingActionsEditor projects={data.projects || []} members={data.members || []} />
   </>;
 }

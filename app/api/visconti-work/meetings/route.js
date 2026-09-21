@@ -21,9 +21,12 @@ async function db(path, options = {}) {
   return data;
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const meetings = await db("visconti_meetings?select=*&status=in.(draft,in_progress)&order=meeting_date.desc&order=created_at.desc&limit=1");
+    const history = new URL(request.url).searchParams.get("history") === "1";
+    const meetings = history
+      ? await db("visconti_meetings?select=*&order=meeting_date.desc&order=created_at.desc&limit=1")
+      : await db("visconti_meetings?select=*&status=in.(draft,in_progress)&order=meeting_date.desc&order=created_at.desc&limit=1");
     const meeting = Array.isArray(meetings) ? meetings[0] : null;
     if (!meeting) return NextResponse.json({ meeting: null, topics: [] });
     const topics = await db(`visconti_meeting_topics?select=*&meeting_id=eq.${encodeURIComponent(meeting.id)}&order=sort_order.asc&order=created_at.asc`);
