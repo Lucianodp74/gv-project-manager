@@ -82,6 +82,8 @@ export async function PATCH(request) {
     if (body.kind === "meeting") {
       const update = {};
       if (body.status) update.status = body.status;
+      if (body.title !== undefined) update.title = body.title || "Riunione operativa";
+      if (body.meeting_date !== undefined) update.meeting_date = body.meeting_date || null;
       if (body.notes !== undefined) update.notes = body.notes;
       const rows = await db(`visconti_meetings?id=eq.${encodeURIComponent(body.id)}&select=*`, {
         method: "PATCH",
