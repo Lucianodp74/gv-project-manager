@@ -8,12 +8,15 @@ export default function ViscontiProjectExternalProfessionals({ projectId }) {
   const [message, setMessage] = useState("");
 
   async function load() {
-    const r = await fetch(`/api/visconti-project-detail?projectId=\${encodeURIComponent(projectId)}&resource=external-professionals`, { cache: "no-store" });
+    const r = await fetch(`/api/visconti-project-detail?projectId=${encodeURIComponent(projectId)}&resource=external-professionals`, { cache: "no-store" });
     const data = await r.json();
-    if (r.ok) setRows(Array.isArray(data) ? data : []);
+    if (!r.ok) throw new Error(data?.error || "Lettura professionisti non riuscita");
+    setRows(Array.isArray(data) ? data : []);
   }
 
-  useEffect(() => { if (projectId) load().catch(() => {}); }, [projectId]);
+  useEffect(() => {
+    if (projectId) load().catch((e) => setMessage(e.message || "Lettura professionisti non riuscita"));
+  }, [projectId]);
 
   const assignedCount = useMemo(() => rows.filter((r) => r.assigned).length, [rows]);
   const update = (id, patch) => setRows((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
