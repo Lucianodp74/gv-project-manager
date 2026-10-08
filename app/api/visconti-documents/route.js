@@ -27,6 +27,10 @@ export async function POST(request) {
     const title = String(body?.title || "").trim();
     const documentType = String(body?.document_type || "").trim();
     const driveUrl = String(body?.drive_url || "").trim();
+    const driveFileId = String(body?.drive_file_id || "").trim();
+    const driveMimeType = String(body?.drive_mime_type || "").trim();
+    const driveSizeBytes = body?.drive_size_bytes == null || body?.drive_size_bytes === "" ? null : Number(body.drive_size_bytes);
+    const driveModifiedAt = body?.drive_modified_at ? String(body.drive_modified_at) : null;
 
     if (!projectId || !title || !driveUrl) {
       return Response.json({ error: "Progetto, nome documento e link Drive sono obbligatori." }, { status: 400 });
@@ -47,6 +51,10 @@ export async function POST(request) {
         document_type: documentType || "Google Drive",
         url: driveUrl,
         drive_url: driveUrl,
+        drive_file_id: driveFileId || null,
+        drive_mime_type: driveMimeType || null,
+        drive_size_bytes: Number.isFinite(driveSizeBytes) ? driveSizeBytes : null,
+        drive_modified_at: driveModifiedAt || null,
         status: "active",
       }),
     });
