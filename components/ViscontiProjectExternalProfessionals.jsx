@@ -25,6 +25,15 @@ export default function ViscontiProjectExternalProfessionals({ projectId }) {
     setSaving(row.id);
     setMessage("");
     try {
+      const rawQuoted = String(row.quoted_price ?? "").trim();
+      const normalizedQuoted = rawQuoted
+        ? (rawQuoted.includes(",")
+          ? Number(rawQuoted.replace(/\./g, "").replace(",", "."))
+          : Number(rawQuoted))
+        : null;
+      if (normalizedQuoted !== null && (!Number.isFinite(normalizedQuoted) || normalizedQuoted < 0)) {
+        throw new Error("Importo non valido. Usa ad esempio 4500 oppure 4.500,50.");
+      }
       const payload = {
         id: row.id,
         project_id: projectId,
@@ -32,7 +41,7 @@ export default function ViscontiProjectExternalProfessionals({ projectId }) {
         assigned: !!row.assigned,
         professional_name: row.professional_name || null,
         company_name: row.company_name || null,
-        quoted_price: row.quoted_price === "" || row.quoted_price == null ? null : Number(row.quoted_price),
+        quoted_price: normalizedQuoted,
         assigned_at: row.assigned ? (row.assigned_at || new Date().toISOString()) : null,
         notes: row.notes || null
       };
@@ -67,7 +76,7 @@ export default function ViscontiProjectExternalProfessionals({ projectId }) {
         <input className="pep-check" type="checkbox" checked={!!row.assigned} onChange={(e) => update(row.id, { assigned: e.target.checked })} title="Assegnato" />
         <input className="pep-input" placeholder="Nome professionista" value={row.professional_name || ""} onChange={(e) => update(row.id, { professional_name: e.target.value })} />
         <input className="pep-input" placeholder="Studio / società" value={row.company_name || ""} onChange={(e) => update(row.id, { company_name: e.target.value })} />
-        <input className="pep-input" type="number" min="0" step="0.01" placeholder="Preventivo €" value={row.quoted_price ?? ""} onChange={(e) => update(row.id, { quoted_price: e.target.value })} />
+        <input className="pep-input" type="text" inputMode="decimal" placeholder="Preventivo €" value={row.quoted_price ?? ""} onChange={(e) => update(row.id, { quoted_price: e.target.value })} />
         <button className="pep-btn" disabled={saving === row.id} onClick={() => save(row)}>{saving === row.id ? "…" : "Salva"}</button>
       </div>)}
     </div>
