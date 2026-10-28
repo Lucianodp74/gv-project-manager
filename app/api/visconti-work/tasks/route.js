@@ -20,7 +20,7 @@ function clean(body, partial=false) {
   if(out.title!==undefined){out.title=String(out.title).trim();if(!out.title)throw new Error("Titolo obbligatorio");}
   if(out.priority!==undefined&&!priorities.has(out.priority)) throw new Error("Priorità non valida");
   if(out.workflow_status!==undefined&&!statuses.has(out.workflow_status)) throw new Error("Stato non valido");
-  if(out.category!==undefined&&out.category!==null&&!categories.has(out.category)) throw new Error("Categoria non valida");
+  if(out.category!==undefined&&out.category!==null&&!categories.has(out.category)) out.category = "general";
   if(out.attention_state!==undefined&&!["normal","soon","urgent","overdue","blocked"].includes(out.attention_state)) throw new Error("Stato attenzione non valido");
   if(out.assignee_person_id!==undefined){out.responsible_id=out.assignee_person_id;delete out.assignee_person_id;}
   delete out.attention_state;
