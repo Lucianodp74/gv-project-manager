@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -16,7 +16,8 @@ function RequestTracking({task,saving,onUpdate}){if(!isRequest(task))return null
 
 export default function ViscontiTaskBoardV2({tasks=[],projects=[],members=[],practices=[],connected=false}){
  const router=useRouter();const[filter,setFilter]=useState({status:"open",priority:"all",assignee:"all",category:"all",project:"all"});const[search,setSearch]=useState("");const[editing,setEditing]=useState(null);const[form,setForm]=useState(emptyForm);const[saving,setSaving]=useState(false);const[error,setError]=useState("");
- useEffect(()=>{const p=new URLSearchParams(window.location.search);const taskId=p.get("task"),projectId=p.get("project");if(projectId)setFilter(c=>({...c,project:projectId}));if(!taskId)return;const task=tasks.find(i=>i.id===taskId);if(task)openEdit(task);},[tasks]);
+ const openedTaskFromUrl=useRef(null);
+ useEffect(()=>{const p=new URLSearchParams(window.location.search);const taskId=p.get("task"),projectId=p.get("project");if(projectId)setFilter(c=>({...c,project:projectId}));if(!taskId||openedTaskFromUrl.current===taskId)return;const task=tasks.find(i=>i.id===taskId);if(task){openedTaskFromUrl.current=taskId;openEdit(task);}},[tasks]);
  const filtered=useMemo(()=>tasks.filter(t=>{if(filter.status==="open"&&["done","cancelled"].includes(t.workflow_status))return false;if(filter.status!=="open"&&filter.status!=="all"&&t.workflow_status!==filter.status)return false;if(filter.priority!=="all"&&t.priority!==filter.priority)return false;if(filter.assignee!=="all"&&t.assignee_person_id!==filter.assignee)return false;if(filter.category!=="all"&&t.category!==filter.category)return false;if(filter.project!=="all"&&t.project_id!==filter.project)return false;const q=search.trim().toLowerCase();return !q||`${t.title} ${t.project_name||""} ${t.assignee_name||""} ${t.connection_practice_code||""} ${t.blocker_reason||""}`.toLowerCase().includes(q);}),[tasks,filter,search]);
  const stats=useMemo(()=>({open:tasks.filter(t=>!["done","cancelled"].includes(t.workflow_status)).length,blocked:tasks.filter(t=>t.workflow_status==="blocked").length,urgent:tasks.filter(t=>t.priority==="urgent"&&t.workflow_status!=="done").length,overdue:tasks.filter(t=>t.attention_state==="overdue"&&t.workflow_status!=="done").length,waiting:tasks.filter(t=>(t.request_done_at||t.action_done_at)&&!t.response_received_at).length}),[tasks]);
  function openCreate(){setError("");setForm(emptyForm);setEditing("new");}
